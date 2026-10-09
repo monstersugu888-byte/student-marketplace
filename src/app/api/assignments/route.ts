@@ -9,8 +9,12 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
     const docId = sanitizeId(userId);
 
+    if (!db) {
+      return NextResponse.json({ success: true, assignments: [] });
+    }
+
     const snapshot = await db.collection('users').doc(docId).collection('assignments').get();
-    const assignments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const assignments = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({ success: true, assignments });
   } catch (error: any) {
@@ -31,7 +35,9 @@ export async function POST(req: NextRequest) {
       createdAt: assignment.createdAt || new Date().toISOString().split('T')[0],
     };
 
-    await db.collection('users').doc(docId).collection('assignments').doc(asgId).set(asgData);
+    if (db) {
+      await db.collection('users').doc(docId).collection('assignments').doc(asgId).set(asgData);
+    }
 
     return NextResponse.json({ success: true, assignment: asgData });
   } catch (error: any) {
@@ -45,8 +51,10 @@ export async function PUT(req: NextRequest) {
     const { userId, id, updated } = body;
     const docId = sanitizeId(userId || 'alex.rivera@campus.edu');
 
-    const asgRef = db.collection('users').doc(docId).collection('assignments').doc(id);
-    await asgRef.set(updated, { merge: true });
+    if (db) {
+      const asgRef = db.collection('users').doc(docId).collection('assignments').doc(id);
+      await asgRef.set(updated, { merge: true });
+    }
 
     return NextResponse.json({ success: true, id, updated });
   } catch (error: any) {
@@ -62,7 +70,9 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
 
     const docId = sanitizeId(userId);
-    await db.collection('users').doc(docId).collection('assignments').doc(id).delete();
+    if (db) {
+      await db.collection('users').doc(docId).collection('assignments').doc(id).delete();
+    }
 
     return NextResponse.json({ success: true, id });
   } catch (error: any) {

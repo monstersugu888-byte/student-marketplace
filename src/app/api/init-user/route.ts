@@ -112,25 +112,25 @@ export async function POST(req: NextRequest) {
     const currentProfile = (await userRef.get()).data()?.profile || initialProfile;
 
     const asgSnapshot = await userRef.collection('assignments').get();
-    const assignments = asgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const assignments = asgSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     const attSnapshot = await userRef.collection('attendance').get();
-    const attendances = attSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const attendances = attSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     const taskSnapshot = await userRef.collection('tasks').get();
-    const dailyTasks = taskSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const dailyTasks = taskSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     const sesSnapshot = await userRef.collection('sessions').get();
-    const studySessions = sesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const studySessions = sesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     const notifSnapshot = await userRef.collection('notifications').get();
-    const notifications = notifSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const notifications = notifSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     const matSnapshot = await db.collection('study_materials').get();
     const bookmarksSnapshot = await userRef.collection('bookmarks').get();
-    const bookmarkedIds = new Set(bookmarksSnapshot.docs.map(d => d.id));
+    const bookmarkedIds = new Set(bookmarksSnapshot.docs.map((d: any) => d.id));
 
-    const materials = matSnapshot.docs.map(doc => {
+    const materials = matSnapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
     });
 
     const mktSnapshot = await db.collection('marketplace_listings').get();
-    const listings = mktSnapshot.docs.map(doc => {
+    const listings = mktSnapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,

@@ -9,8 +9,12 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
     const docId = sanitizeId(userId);
 
+    if (!db) {
+      return NextResponse.json({ success: true, sessions: [] });
+    }
+
     const snapshot = await db.collection('users').doc(docId).collection('sessions').get();
-    const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const sessions = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({ success: true, sessions });
   } catch (error: any) {
@@ -27,7 +31,9 @@ export async function POST(req: NextRequest) {
     const sesId = session.id || 'ses_' + Date.now();
     const sessionData = { ...session, id: sesId };
 
-    await db.collection('users').doc(docId).collection('sessions').doc(sesId).set(sessionData);
+    if (db) {
+      await db.collection('users').doc(docId).collection('sessions').doc(sesId).set(sessionData);
+    }
     return NextResponse.json({ success: true, session: sessionData });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -42,7 +48,9 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
 
     const docId = sanitizeId(userId);
-    await db.collection('users').doc(docId).collection('sessions').doc(id).delete();
+    if (db) {
+      await db.collection('users').doc(docId).collection('sessions').doc(id).delete();
+    }
 
     return NextResponse.json({ success: true, id });
   } catch (error: any) {

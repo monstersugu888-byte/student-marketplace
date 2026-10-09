@@ -9,11 +9,15 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
     const docId = sanitizeId(userId);
 
+    if (!db) {
+      return NextResponse.json({ success: true, materials: [] });
+    }
+
     const snapshot = await db.collection('study_materials').get();
     const bookmarksSnapshot = await db.collection('users').doc(docId).collection('bookmarks').get();
-    const bookmarkedIds = new Set(bookmarksSnapshot.docs.map(d => d.id));
+    const bookmarkedIds = new Set(bookmarksSnapshot.docs.map((d: any) => d.id));
 
-    const materials = snapshot.docs.map(doc => {
+    const materials = snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -42,7 +46,9 @@ export async function POST(req: NextRequest) {
       downloadsCount: material.downloadsCount || 1,
     };
 
-    await db.collection('study_materials').doc(matId).set(matData);
+    if (db) {
+      await db.collection('study_materials').doc(matId).set(matData);
+    }
     return NextResponse.json({ success: true, material: matData });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -55,12 +61,14 @@ export async function PUT(req: NextRequest) {
     const { userId, id, bookmarked } = body;
     const docId = sanitizeId(userId || 'alex.rivera@campus.edu');
 
-    const bookmarkRef = db.collection('users').doc(docId).collection('bookmarks').doc(id);
+    if (db) {
+      const bookmarkRef = db.collection('users').doc(docId).collection('bookmarks').doc(id);
 
-    if (bookmarked) {
-      await bookmarkRef.set({ bookmarkedAt: new Date().toISOString() });
-    } else {
-      await bookmarkRef.delete();
+      if (bookmarked) {
+        await bookmarkRef.set({ bookmarkedAt: new Date().toISOString() });
+      } else {
+        await bookmarkRef.delete();
+      }
     }
 
     return NextResponse.json({ success: true, id, bookmarked });

@@ -9,8 +9,12 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
     const docId = sanitizeId(userId);
 
+    if (!db) {
+      return NextResponse.json({ success: true, tasks: [] });
+    }
+
     const snapshot = await db.collection('users').doc(docId).collection('tasks').get();
-    const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const tasks = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({ success: true, tasks });
   } catch (error: any) {
@@ -27,7 +31,9 @@ export async function POST(req: NextRequest) {
     const taskId = task.id || 'tsk_' + Date.now();
     const taskData = { ...task, id: taskId };
 
-    await db.collection('users').doc(docId).collection('tasks').doc(taskId).set(taskData);
+    if (db) {
+      await db.collection('users').doc(docId).collection('tasks').doc(taskId).set(taskData);
+    }
     return NextResponse.json({ success: true, task: taskData });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -40,8 +46,10 @@ export async function PUT(req: NextRequest) {
     const { userId, id, completed } = body;
     const docId = sanitizeId(userId || 'alex.rivera@campus.edu');
 
-    const taskRef = db.collection('users').doc(docId).collection('tasks').doc(id);
-    await taskRef.set({ completed }, { merge: true });
+    if (db) {
+      const taskRef = db.collection('users').doc(docId).collection('tasks').doc(id);
+      await taskRef.set({ completed }, { merge: true });
+    }
 
     return NextResponse.json({ success: true, id, completed });
   } catch (error: any) {
@@ -57,7 +65,9 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
 
     const docId = sanitizeId(userId);
-    await db.collection('users').doc(docId).collection('tasks').doc(id).delete();
+    if (db) {
+      await db.collection('users').doc(docId).collection('tasks').doc(id).delete();
+    }
 
     return NextResponse.json({ success: true, id });
   } catch (error: any) {

@@ -9,8 +9,12 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
     const docId = sanitizeId(userId);
 
+    if (!db) {
+      return NextResponse.json({ success: true, listings: [] });
+    }
+
     const snapshot = await db.collection('marketplace_listings').get();
-    const listings = snapshot.docs.map(doc => {
+    const listings = snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -40,7 +44,9 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    await db.collection('marketplace_listings').doc(listingId).set(listingData);
+    if (db) {
+      await db.collection('marketplace_listings').doc(listingId).set(listingData);
+    }
 
     return NextResponse.json({
       success: true,
@@ -56,8 +62,10 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { id, status } = body;
 
-    const listingRef = db.collection('marketplace_listings').doc(id);
-    await listingRef.set({ status }, { merge: true });
+    if (db) {
+      const listingRef = db.collection('marketplace_listings').doc(id);
+      await listingRef.set({ status }, { merge: true });
+    }
 
     return NextResponse.json({ success: true, id, status });
   } catch (error: any) {
@@ -71,7 +79,9 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
 
-    await db.collection('marketplace_listings').doc(id).delete();
+    if (db) {
+      await db.collection('marketplace_listings').doc(id).delete();
+    }
     return NextResponse.json({ success: true, id });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -31,6 +31,6 @@ if (!admin.apps.length && serviceAccount && serviceAccount.private_key && !servi
   }
 }
 
-export const db = admin.apps.length ? admin.firestore() : (null as any);
-export const auth = admin.apps.length ? admin.auth() : (null as any);
+export const db: admin.firestore.Firestore = (admin.apps.length ? admin.firestore() : null) as any;
+export const auth: admin.auth.Auth = (admin.apps.length ? admin.auth() : null) as any;
 export default admin;
