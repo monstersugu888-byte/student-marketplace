@@ -45,14 +45,13 @@ export default function ProfilePage() {
   const [major, setMajor] = useState(profile.major);
   const [semester, setSemester] = useState(profile.semester);
   const [studentId, setStudentId] = useState(profile.studentId);
-  const [avatar, setAvatar] = useState(profile.avatar);
   const [bio, setBio] = useState(profile.bio);
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
-      await updateProfile({ name, college, major, semester, studentId, avatar, bio });
+      await updateProfile({ name, college, major, semester, studentId, bio });
       setIsEditOpen(false);
     } finally { setBusy(false); }
   };
@@ -71,11 +70,7 @@ export default function ProfilePage() {
       {/* Profile Header Card */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-card flex flex-col sm:flex-row items-center sm:items-start gap-6 relative overflow-hidden">
         <div className="relative shrink-0">
-          <img
-            src={profile.avatar}
-            alt={profile.name}
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 border-primary shadow-md"
-          />
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-2 border-primary bg-purple-100 dark:bg-purple-950 flex items-center justify-center text-primary text-3xl font-extrabold">{profile.name.split(/\s+/).map(part => part[0]).slice(0, 2).join("").toUpperCase()}</div>
         </div>
 
         <div className="space-y-2 text-center sm:text-left flex-1">
@@ -349,17 +344,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Avatar Image URL
-            </label>
-            <input
-              type="text"
-              value={avatar}
-              onChange={(e) => setAvatar(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
-            />
-          </div>
+
 
           <div>
             <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
