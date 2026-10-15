@@ -258,7 +258,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) throw error;
     setIsAuthenticated(false);
     showToast('Logged out successfully');
   };
