@@ -268,7 +268,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })));
       setLastSyncedAt(new Date());
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Supabase sync failed.');
+      // Background synchronization is intentionally silent; log failures for debugging.
+      console.error('Background Supabase sync failed:', error);
     } finally {
       setIsCloudSyncing(false);
     }
