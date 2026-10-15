@@ -228,8 +228,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [assignments, attendances, materials, listings, profile, dailyTasks, studySessions]);
 
   const refreshFromCloud = async () => {
-    await syncUserFromCloud(profile.email, profile.name);
-    showToast('☁️ Synchronized with Firestore Cloud');
+    setIsCloudSyncing(true);
+    try {
+      const [{ data: authData, error: authError }, { data: rows, error: listingsError }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('marketplace_listings').select('*').order('created_at', { ascending: false }),
+      ]);
+      if (authError) throw authError;
+      if (listingsError) throw listingsError;
+      const user = authData.user;
+      setIsAuthenticated(Boolean(user));
+      if (user) {
+        setProfile(prev => ({
+          ...prev,
+          email: user.email || prev.email,
+          name: String(user.user_metadata?.full_name || user.email?.split('@')[0] || prev.name),
+          major: String(user.user_metadata?.major || prev.major),
+        }));
+      }
+      setListings((rows || []).map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description || '',
+        price: Number(row.price),
+        category: row.category,
+        condition: row.item_condition,
+        status: row.status === 'active' ? 'Available' : row.status === 'reserved' ? 'Reserved' : 'Sold',
+        imageUrl: row.image_url || '',
+        postedDate: new Date(row.created_at).toLocaleDateString(),
+        sellerName: row.seller_name || 'Student seller',
+        sellerAvatar: row.seller_avatar || '',
+        sellerContact: row.seller_contact || '',
+        location: row.location || '',
+        isOwner: row.seller_id === user?.id,
+      })));
+      setLastSyncedAt(new Date());
+      showToast('Synced profile and marketplace with Supabase.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Supabase sync failed.');
+    } finally {
+      setIsCloudSyncing(false);
+    }
   };
 
   const login = async (email: string, pass: string, name?: string) => {
@@ -279,18 +318,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast('Profile updated on this device');
     }
 
-    try {
-      await fetch('/api/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.email,
-          updatedProfile: newProfile,
-        }),
-      });
-    } catch (e) {
-      console.error('Cloud updateProfile error:', e);
-    }
   };
 
   // Attendance Handlers with Cloud Firestore
