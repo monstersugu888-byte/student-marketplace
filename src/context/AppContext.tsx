@@ -15,6 +15,7 @@ import {
   Priority
 } from '../types';
 import { supabase } from '../lib/supabase/client';
+import { apiFetch } from '../lib/api-fetch';
 import {
   initialProfile,
   initialAssignments,
@@ -128,7 +129,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const activeEmail = userEmail || profile.email || 'alex.rivera@campus.edu';
       const activeName = userName || profile.name || 'Alex Rivera';
 
-      const res = await fetch('/api/init-user', {
+      const res = await apiFetch('/api/init-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -375,7 +376,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       const { data: authData } = await supabase.auth.getSession();
-      await fetch('/api/attendance', {
+      await apiFetch('/api/attendance', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}) },
         body: JSON.stringify({
@@ -416,7 +417,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       const { data: authData } = await supabase.auth.getSession();
-      await fetch('/api/attendance', {
+      await apiFetch('/api/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}) },
         body: JSON.stringify({
@@ -450,7 +451,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Attendance counts updated ☁️');
 
     try {
-      await fetch('/api/attendance', {
+      await apiFetch('/api/attendance', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -475,7 +476,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       const { data: authData } = await supabase.auth.getSession();
-      await fetch(`/api/attendance?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/attendance?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {},
       });
@@ -496,7 +497,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Assignment "${asg.title}" created & saved to Cloud ☁️`);
 
     try {
-      await fetch('/api/assignments', {
+      await apiFetch('/api/assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -514,7 +515,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Assignment updated ☁️');
 
     try {
-      await fetch('/api/assignments', {
+      await apiFetch('/api/assignments', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -533,7 +534,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Assignment deleted ☁️');
 
     try {
-      await fetch(`/api/assignments?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/assignments?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
     } catch (e) {
@@ -557,7 +558,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     try {
-      await fetch('/api/assignments', {
+      await apiFetch('/api/assignments', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -581,7 +582,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Study session "${session.title}" scheduled & saved to Cloud ☁️`);
 
     try {
-      await fetch('/api/sessions', {
+      await apiFetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -599,7 +600,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Study session removed ☁️');
 
     try {
-      await fetch(`/api/sessions?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/sessions?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
     } catch (e) {
@@ -620,7 +621,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     try {
-      await fetch('/api/materials', {
+      await apiFetch('/api/materials', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -644,7 +645,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       bookmarked: false,
     };
     const { data: authData } = await supabase.auth.getSession();
-    const response = await fetch('/api/materials', {
+    const response = await apiFetch('/api/materials', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}) },
       body: JSON.stringify({ userId: profile.email, material: newMat }),
@@ -739,7 +740,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Task added ☁️');
 
     try {
-      await fetch('/api/tasks', {
+      await apiFetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -763,7 +764,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     try {
-      await fetch('/api/tasks', {
+      await apiFetch('/api/tasks', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -781,7 +782,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDailyTasks(prev => prev.filter(t => t.id !== id));
 
     try {
-      await fetch(`/api/tasks?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/tasks?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
     } catch (e) {
@@ -794,7 +795,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
 
     try {
-      await fetch('/api/notifications', {
+      await apiFetch('/api/notifications', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -812,7 +813,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('All notifications marked as read ☁️');
 
     try {
-      await fetch('/api/notifications', {
+      await apiFetch('/api/notifications', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
