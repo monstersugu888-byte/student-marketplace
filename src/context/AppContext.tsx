@@ -294,7 +294,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { data, error } = await supabase.auth.signUp({
       email,
       password: pass,
-      options: { data: { full_name: name, major: major || 'Computer Science' } },
+      options: {
+        data: { full_name: name, major: major || 'Computer Science' },
+        // Send confirmation emails to the deployed app, never the local development server.
+        emailRedirectTo: `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://student-marketplace-opal.vercel.app').replace(/\/$/, '')}/`,
+      },
     });
     if (error) return { success: false, message: error.message };
     if (!data.session) return { success: true, message: 'Account created. Check your email to confirm your account, then sign in.' };
