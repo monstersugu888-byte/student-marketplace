@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase/admin';
+import { requireUser, verifiedUserDocumentId } from '@/lib/supabase/request-auth';
 import {
   initialProfile,
   initialAssignments,
@@ -12,19 +13,18 @@ import {
   initialAttendances
 } from '@/data/mockData';
 
-const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_');
-
 export async function POST(req: NextRequest) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
   try {
-    const body = await req.json();
-    const userId = body.userId || 'usr_001';
-    const email = body.email || 'alex.rivera@campus.edu';
-    const name = body.name || 'Alex Rivera';
-    const docId = sanitizeId(email || userId);
+    const email = auth.user!.email!;
+    const name = String(auth.user!.user_metadata?.full_name || email.split('@')[0]);
+    const docId = verifiedUserDocumentId(email);
 
     if (!db) {
       return NextResponse.json({
-        success: true,
+        success: false,
+        error: 'Database is not configured. User data was not initialized.',
         data: {
           profile: { ...initialProfile, id: docId, email, name },
           assignments: initialAssignments,
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
           listings: initialMarketplaceListings,
           classes: initialClasses,
         }
-      });
+      }, { status: 503 });
     }
 
     const userRef = db.collection('users').doc(docId);
@@ -111,8 +111,18 @@ export async function POST(req: NextRequest) {
 
     const currentProfile = (await userRef.get()).data()?.profile || initialProfile;
 
-    const asgSnapshot = await userRef.collection('assignments').get();
-    const assignments = asgSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+    // Load shared teacher-created assignments and overlay only this student's submission state.
+    const [asgSnapshot, submissionSnapshot] = await Promise.all([
+      db.collection('assignments').get(),
+      userRef.collection('assignment_submissions').get(),
+    ]);
+    const submissions = new Map(submissionSnapshot.docs.map((doc: any) => [doc.id, doc.data()]));
+    const assignments = asgSnapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+      ...(submissions.get(doc.id) || {}),
+      assignmentId: doc.id,
+    }));
 
     const attSnapshot = await userRef.collection('attendance').get();
     const attendances = attSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
@@ -153,7 +163,7 @@ export async function POST(req: NextRequest) {
       success: true,
       data: {
         profile: currentProfile,
-        assignments: assignments.length > 0 ? assignments : initialAssignments,
+        assignments,
         attendances: attendances.length > 0 ? attendances : initialAttendances,
         dailyTasks: dailyTasks.length > 0 ? dailyTasks : initialDailyTasks,
         studySessions: studySessions.length > 0 ? studySessions : initialStudySessions,
