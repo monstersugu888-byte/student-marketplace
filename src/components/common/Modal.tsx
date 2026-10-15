@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -32,9 +33,9 @@ export const Modal: React.FC<ModalProps> = ({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal((
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
       <div className={`w-full ${maxWidth} max-h-[90vh] max-h-[90dvh] flex flex-col bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all`}>
         <div className="flex shrink-0 items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800">
@@ -53,5 +54,5 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 };
