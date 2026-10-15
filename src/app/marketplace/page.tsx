@@ -23,6 +23,8 @@ import {
 import { Modal } from '@/components/common/Modal';
 import { MarketplaceCategory, ItemCondition, MarketplaceListing } from '@/types';
 
+const formatINR = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
+
 const CATEGORIES: MarketplaceCategory[] = [
   'Books',
   'Electronics',
@@ -58,7 +60,7 @@ export default function MarketplacePage() {
   const [category, setCategory] = useState<MarketplaceCategory>('Books');
   const [condition, setCondition] = useState<ItemCondition>('Like New');
   const [imageUrl, setImageUrl] = useState('');
-  const [location, setLocation] = useState('Central Student Center');
+  const [location, setLocation] = useState('');
   const [contact, setContact] = useState(profile.email);
 
   // Report modal state
@@ -82,16 +84,16 @@ export default function MarketplacePage() {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !price) return;
+    if (!title.trim() || !price.trim() || !Number.isFinite(Number(price)) || Number(price) <= 0) return;
 
     addListing({
       title,
-      description: description || 'Great student item up for grabs!',
-      price: parseFloat(price) || 10,
+      description: description.trim(),
+      price: Number(price),
       category,
       condition,
       status: 'Available',
-      imageUrl: imageUrl || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80',
+      imageUrl: imageUrl.trim(),
       sellerContact: contact,
       location,
     });
@@ -184,7 +186,7 @@ export default function MarketplacePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search products, textbooks..."
+              placeholder="Search real listings..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -212,7 +214,7 @@ export default function MarketplacePage() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center border border-slate-200 dark:border-slate-800">
           <ShoppingBag className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No marketplace listings found</h3>
-          <p className="text-xs text-slate-500 mt-1">Try resetting search filters or post a new product.</p>
+          <p className="text-xs text-slate-500 mt-1">There are no real listings yet. Be the first to post an item you actually want to sell.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -317,7 +319,7 @@ export default function MarketplacePage() {
                     <button
                       onClick={() => {
                         setContactingItem(item);
-                        setCustomMsg(`Hi ${item.sellerName}! I saw your "${item.title}" listed for $${item.price}. Is it still available to meet on campus?`);
+                        setCustomMsg(`Hi ${item.sellerName}! I saw your "${item.title}" listed for ${formatINR(item.price)}. Is it still available?`);
                       }}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-dark transition-colors"
                     >
@@ -346,7 +348,7 @@ export default function MarketplacePage() {
             <input
               type="text"
               required
-              placeholder="e.g. TI-84 Plus CE Graphing Calculator"
+              placeholder="Enter the actual item name"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
@@ -356,13 +358,13 @@ export default function MarketplacePage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Price ($ USD) *
+                Price (₹ INR) *
               </label>
               <input
                 type="number"
                 required
                 min="0"
-                placeholder="45"
+                placeholder="450"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
@@ -419,7 +421,7 @@ export default function MarketplacePage() {
             </label>
             <input
               type="text"
-              placeholder="https://images.unsplash.com/..."
+              placeholder="Paste a real photo URL (optional)"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
@@ -432,7 +434,7 @@ export default function MarketplacePage() {
             </label>
             <textarea
               rows={3}
-              placeholder="Product specs, condition description, package contents..."
+              placeholder="Describe the actual item, its condition, and what is included"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
