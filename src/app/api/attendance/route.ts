@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase/admin';
-import { requireTeacher } from '@/lib/supabase/request-auth';
+import { requireTeacher, requireUser, verifiedUserDocumentId } from '@/lib/supabase/request-auth';
 
 const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_');
 
 export async function GET(req: NextRequest) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
   try {
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
-    const docId = sanitizeId(userId);
+    const requestedUserId = searchParams.get('userId');
+    const docId = auth.user!.app_metadata?.role === 'teacher' && requestedUserId
+      ? sanitizeId(requestedUserId)
+      : verifiedUserDocumentId(auth.user!.email!);
 
     if (!db) {
       return NextResponse.json({ success: true, attendances: [] });
@@ -28,8 +32,9 @@ export async function POST(req: NextRequest) {
   if (auth.response) return auth.response;
   try {
     const body = await req.json();
-    const { userId, subject } = body;
-    const docId = sanitizeId(userId || 'alex.rivera@campus.edu');
+    const { subject } = body;
+    if (!subject || typeof subject !== 'object') return NextResponse.json({ success: false, error: 'Attendance subject is required.' }, { status: 400 });
+    const docId = verifiedUserDocumentId(auth.user!.email!);
 
     const attId = subject.id || 'att_' + Date.now();
     const attData = {
@@ -54,7 +59,9 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
     const { userId, id, updated, action, status, date, note } = body;
-    const docId = sanitizeId(userId || 'alex.rivera@campus.edu');
+    const docId = auth.user!.app_metadata?.role === 'teacher' && userId
+      ? sanitizeId(userId)
+      : verifiedUserDocumentId(auth.user!.email!);
 
     if (!db) {
       return NextResponse.json({ success: true, id });
@@ -113,7 +120,8 @@ export async function DELETE(req: NextRequest) {
   if (auth.response) return auth.response;
   try {
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
+    const requestedUserId = searchParams.get('userId');
+    const userId = auth.user!.app_metadata?.role === 'teacher' && requestedUserId ? requestedUserId : auth.user!.email!;
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
 
