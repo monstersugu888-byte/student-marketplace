@@ -13,14 +13,11 @@ import {
   initialAttendances
 } from '@/data/mockData';
 
-const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_');
-
 export async function POST(req: NextRequest) {
   const auth = await requireUser(req);
   if (auth.response) return auth.response;
   try {
     const email = auth.user!.email!;
-    const userId = auth.user!.id;
     const name = String(auth.user!.user_metadata?.full_name || email.split('@')[0]);
     const docId = verifiedUserDocumentId(email);
 
@@ -114,8 +111,18 @@ export async function POST(req: NextRequest) {
 
     const currentProfile = (await userRef.get()).data()?.profile || initialProfile;
 
-    const asgSnapshot = await userRef.collection('assignments').get();
-    const assignments = asgSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+    // Load shared teacher-created assignments and overlay only this student's submission state.
+    const [asgSnapshot, submissionSnapshot] = await Promise.all([
+      db.collection('assignments').get(),
+      userRef.collection('assignment_submissions').get(),
+    ]);
+    const submissions = new Map(submissionSnapshot.docs.map((doc: any) => [doc.id, doc.data()]));
+    const assignments = asgSnapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+      ...(submissions.get(doc.id) || {}),
+      assignmentId: doc.id,
+    }));
 
     const attSnapshot = await userRef.collection('attendance').get();
     const attendances = attSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
@@ -156,7 +163,7 @@ export async function POST(req: NextRequest) {
       success: true,
       data: {
         profile: currentProfile,
-        assignments: assignments.length > 0 ? assignments : initialAssignments,
+        assignments,
         attendances: attendances.length > 0 ? attendances : initialAttendances,
         dailyTasks: dailyTasks.length > 0 ? dailyTasks : initialDailyTasks,
         studySessions: studySessions.length > 0 ? studySessions : initialStudySessions,
