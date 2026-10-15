@@ -64,6 +64,7 @@ export interface StudyMaterial {
   type: 'PDF' | 'Notes' | 'Slides' | 'Lab Manual' | 'Link' | 'Image';
   content?: string;
   imageUrl?: string;
+  storagePath?: string;
   fileSize?: string;
   uploadDate: string;
   uploadedBy: string;
