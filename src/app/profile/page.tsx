@@ -126,14 +126,14 @@ export default function ProfilePage() {
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white">
-                Cloud Firestore Backend Database
+                Supabase Backend Database
               </h4>
               <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold text-[10px] border border-emerald-500/30">
                 ACTIVE
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Project: <strong className="text-slate-700 dark:text-slate-300">student-marketplace-badb0</strong> • All student assignments, attendance & notes are stored personalized to your account.
+              Your account and marketplace listings are connected to Supabase. Other dashboard modules are still being migrated.
             </p>
           </div>
         </div>
@@ -144,7 +144,7 @@ export default function ProfilePage() {
           className="flex items-center justify-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold transition-all shrink-0"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
-          <span>{isCloudSyncing ? 'Syncing...' : 'Sync Firestore'}</span>
+          <span>{isCloudSyncing ? 'Syncing...' : 'Sync Supabase'}</span>
         </button>
       </div>
 
