@@ -66,12 +66,18 @@ export default function StudyMaterialsPage() {
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !subject.trim() || !courseCode.trim()) return;
+    if (!title.trim() || !subject.trim() || !courseCode.trim()) { showToast('Fill in the resource title, subject, and course code.'); return; }
     if (type === 'Link' && !linkUrl.trim()) { showToast('Enter a valid resource URL.'); return; }
-    if (type !== 'Link' && type !== 'Notes' && !selectedFile) { showToast('Choose a PDF, image, or presentation file to upload.'); return; }
+    if (type !== 'Link' && type !== 'Notes' && !selectedFile) { showToast('Choose a file before tapping Upload Material.'); return; }
+    if (type === 'Notes' && !noteText.trim() && !selectedFile) { showToast('Enter some notes or attach a file first.'); return; }
+    if (selectedFile && type === 'PDF' && selectedFile.type !== 'application/pdf') { showToast('Please choose a PDF file for the PDF resource type.'); return; }
+    if (selectedFile && type === 'Image' && !selectedFile.type.startsWith('image/')) { showToast('Please choose an image file.'); return; }
     if (selectedFile && selectedFile.size > 20 * 1024 * 1024) { showToast('File is too large. Maximum file size is 20 MB.'); return; }
     setIsSubmitting(true);
     try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Please sign in with your Supabase account before uploading materials.');
       let downloadUrl = type === 'Link' ? linkUrl.trim() : '';
       let storagePath = '';
       let fileSize = noteText.trim() ? 'Text notes' : '';
@@ -395,9 +401,10 @@ export default function StudyMaterialsPage() {
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark"
+              disabled={isSubmitting}
+              className="px-5 py-2 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Upload Material
+              {isSubmitting ? 'Uploading…' : 'Upload Material'}
             </button>
           </div>
         </form>
