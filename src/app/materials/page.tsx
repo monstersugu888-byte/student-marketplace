@@ -84,7 +84,7 @@ export default function StudyMaterialsPage() {
         downloadUrl = '';
         fileSize = `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`;
       }
-      await addMaterial({ title: title.trim(), subject: subject.trim(), courseCode: courseCode.trim(), semester, type, fileSize, uploadedBy: profile.name || profile.email, downloadUrl, storagePath, content: noteText.trim(), imageUrl: selectedFile?.type.startsWith('image/') ? '' : '' });
+      await addMaterial({ title: title.trim(), subject: subject.trim(), courseCode: courseCode.trim(), semester, type, fileSize, uploadedBy: profile.name || profile.email, downloadUrl, storagePath, content: noteText.trim(), imageUrl: '' });
       setTitle(''); setSubject(''); setCourseCode(''); setLinkUrl(''); setNoteText(''); setSelectedFile(null); setIsUploadOpen(false);
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Upload failed. Check the study-materials storage bucket.');
