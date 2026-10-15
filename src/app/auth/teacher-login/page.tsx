@@ -28,7 +28,7 @@ export default function TeacherLoginPage() {
       }
       if (data.user.app_metadata?.role !== 'teacher') {
         await supabase.auth.signOut({ scope: 'local' });
-        setError('This account is not approved for teacher access yet. Registration alone does not grant access. Ask your Campus OS administrator to assign the teacher role in Supabase Auth → Users → app_metadata.');
+        setError('This teacher application is still pending or was rejected. The CampusMate administrator must approve it using the approval email before teacher access is enabled.');
         return;
       }
       router.replace('/teacher');
