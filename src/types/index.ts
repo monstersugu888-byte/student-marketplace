@@ -61,7 +61,9 @@ export interface StudyMaterial {
   subject: string;
   courseCode: string;
   semester: string;
-  type: 'PDF' | 'Notes' | 'Slides' | 'Lab Manual' | 'Link';
+  type: 'PDF' | 'Notes' | 'Slides' | 'Lab Manual' | 'Link' | 'Image';
+  content?: string;
+  imageUrl?: string;
   fileSize?: string;
   uploadDate: string;
   uploadedBy: string;
