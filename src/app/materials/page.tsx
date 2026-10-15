@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
   FolderDown,
@@ -21,6 +22,7 @@ import { StudyMaterial } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 
 export default function StudyMaterialsPage() {
+  const router = useRouter();
   const { materials, toggleBookmarkMaterial, addMaterial, showToast, profile } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,9 +77,21 @@ export default function StudyMaterialsPage() {
     if (selectedFile && selectedFile.size > 20 * 1024 * 1024) { showToast('File is too large. Maximum file size is 20 MB.'); return; }
     setIsSubmitting(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Please sign in with your Supabase account before uploading materials.');
+      // Restore/refresh the persisted Supabase session before any Storage request.
+      let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!sessionData.session) {
+        const refreshed = await supabase.auth.refreshSession();
+        sessionData = refreshed.data;
+        sessionError = refreshed.error;
+      }
+      if (sessionError) throw sessionError;
+      if (!sessionData.session?.access_token || !sessionData.session.user) {
+        showToast('Your login session is missing or expired. Please sign in again, then upload your file.');
+        setIsSubmitting(false);
+        router.push('/auth/login?next=/');
+        return;
+      }
       let downloadUrl = type === 'Link' ? linkUrl.trim() : '';
       let storagePath = '';
       let fileSize = noteText.trim() ? 'Text notes' : '';
@@ -93,7 +107,13 @@ export default function StudyMaterialsPage() {
       await addMaterial({ title: title.trim(), subject: subject.trim(), courseCode: courseCode.trim(), semester, type, fileSize, uploadedBy: profile.name || profile.email, downloadUrl, storagePath, content: noteText.trim(), imageUrl: '' });
       setTitle(''); setSubject(''); setCourseCode(''); setLinkUrl(''); setNoteText(''); setSelectedFile(null); setIsUploadOpen(false);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Upload failed. Check the study-materials storage bucket.');
+      const message = error instanceof Error ? error.message : 'Upload failed. Check the study-materials storage bucket.';
+      if (/auth session missing|session missing|invalid jwt|jwt expired/i.test(message)) {
+        showToast('Your login session expired. Sign in again before uploading.');
+        router.push('/auth/login?next=/');
+      } else {
+        showToast(message);
+      }
     } finally { setIsSubmitting(false); }
   };
 
