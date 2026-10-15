@@ -23,10 +23,14 @@ export default function AttendancePage() {
   const {
     attendances,
     markAttendance,
+    userRole,
+    isAuthenticated,
     addSubjectAttendance,
     updateSubjectAttendance,
     deleteSubjectAttendance
   } = useApp();
+
+  const isTeacher = isAuthenticated && userRole === 'teacher';
 
   // Add Modal State
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -54,6 +58,7 @@ export default function AttendancePage() {
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isTeacher) return;
     if (!subject || !code) return;
 
     addSubjectAttendance(
@@ -73,7 +78,7 @@ export default function AttendancePage() {
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingItem) return;
+    if (!isTeacher || !editingItem) return;
 
     updateSubjectAttendance(
       editingItem.id,
@@ -136,13 +141,13 @@ export default function AttendancePage() {
           </p>
         </div>
 
-        <button
+        {isTeacher && <button
           onClick={() => setIsAddOpen(true)}
           className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 transition-all"
         >
           <Plus className="w-4 h-4" />
           <span>Add New Subject</span>
-        </button>
+        </button>}
       </div>
 
       {/* KPI Stats Overview */}
@@ -247,8 +252,8 @@ export default function AttendancePage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              {/* Attendance-changing controls are teacher-only. */}
+              {isTeacher && <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => markAttendance(item.id, 'Present')}
@@ -289,14 +294,14 @@ export default function AttendancePage() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
+              </div>}
             </div>
           );
         })}
       </div>
 
       {/* Add Subject Modal */}
-      <Modal
+      {isTeacher && <Modal
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         title="Add Subject to Attendance Tracker"
@@ -402,7 +407,7 @@ export default function AttendancePage() {
             </button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
 
       {/* Edit Counts Modal */}
       <Modal
