@@ -603,57 +603,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Marketplace Handlers with Cloud Firestore
   const addListing = async (item: Omit<MarketplaceListing, 'id' | 'postedDate' | 'sellerName' | 'sellerAvatar' | 'isOwner'>) => {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    const user = authData.user;
+    if (authError || !user) {
+      showToast('Please sign in before creating a listing.');
+      return;
+    }
+    const payload = {
+      seller_id: user.id,
+      title: item.title,
+      description: item.description,
+      price: item.price,
+      category: item.category,
+      item_condition: item.condition,
+      status: item.status === 'Reserved' ? 'reserved' : item.status === 'Sold' ? 'sold' : 'active',
+      image_url: item.imageUrl,
+      seller_name: profile.name,
+      seller_avatar: profile.avatar,
+      seller_contact: item.sellerContact,
+      location: item.location,
+    };
+    const { data, error } = await supabase.from('marketplace_listings').insert(payload).select().single();
+    if (error || !data) {
+      showToast(error?.message || 'Could not create listing.');
+      return;
+    }
     const newListing: MarketplaceListing = {
       ...item,
-      id: 'mkt_' + Date.now(),
+      id: data.id,
       postedDate: 'Just now',
-      sellerName: profile.name,
-      sellerAvatar: profile.avatar,
+      sellerName: data.seller_name || profile.name,
+      sellerAvatar: data.seller_avatar || profile.avatar,
       isOwner: true,
     };
     setListings(prev => [newListing, ...prev]);
-    showToast(`Marketplace item "${item.title}" listed in Cloud ☁️`);
-
-    try {
-      await fetch('/api/marketplace', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.email,
-          listing: newListing,
-        }),
-      });
-    } catch (e) {
-      console.error('Cloud addListing error:', e);
-    }
+    showToast(`Marketplace item "${item.title}" listed successfully.`);
   };
 
   const updateListingStatus = async (id: string, status: MarketplaceListing['status']) => {
-    setListings(prev => prev.map(l => l.id === id ? { ...l, status } : l));
-    showToast(`Listing marked as ${status} ☁️`);
-
-    try {
-      await fetch('/api/marketplace', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status }),
-      });
-    } catch (e) {
-      console.error('Cloud updateListingStatus error:', e);
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      showToast('Please sign in to update your listing.');
+      return;
     }
+    const dbStatus = status === 'Reserved' ? 'reserved' : status === 'Sold' ? 'sold' : 'active';
+    const { error } = await supabase.from('marketplace_listings').update({ status: dbStatus }).eq('id', id).eq('seller_id', authData.user.id);
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+    setListings(prev => prev.map(l => l.id === id ? { ...l, status } : l));
+    showToast(`Listing marked as ${status}.`);
   };
 
   const deleteListing = async (id: string) => {
-    setListings(prev => prev.filter(l => l.id !== id));
-    showToast('Listing removed ☁️');
-
-    try {
-      await fetch(`/api/marketplace?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      });
-    } catch (e) {
-      console.error('Cloud deleteListing error:', e);
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      showToast('Please sign in to remove a listing.');
+      return;
     }
+    const { error } = await supabase.from('marketplace_listings').delete().eq('id', id).eq('seller_id', authData.user.id);
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+    setListings(prev => prev.filter(l => l.id !== id));
+    showToast('Listing removed.');
   };
 
   // Daily Tasks Handlers with Cloud Firestore
