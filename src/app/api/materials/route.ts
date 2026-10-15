@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const docId = verifiedUserDocumentId(auth.user!.email!);
 
     if (!db) {
-      return NextResponse.json({ success: true, materials: [] });
+      return NextResponse.json({ success: false, error: 'Study materials database is not configured.' }, { status: 503 });
     }
 
     const snapshot = await db.collection('study_materials').get();
@@ -51,9 +51,8 @@ export async function POST(req: NextRequest) {
       downloadsCount: 0,
     };
 
-    if (db) {
-      await db.collection('study_materials').doc(matId).set(matData);
-    }
+    if (!db) return NextResponse.json({ success: false, error: 'Study materials database is not configured. Material was not saved.' }, { status: 503 });
+    await db.collection('study_materials').doc(matId).set(matData);
     return NextResponse.json({ success: true, material: matData });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -69,16 +68,13 @@ export async function PUT(req: NextRequest) {
     if (typeof id !== 'string' || !id) return NextResponse.json({ success: false, error: 'Material ID is required.' }, { status: 400 });
     const docId = verifiedUserDocumentId(auth.user!.email!);
 
-    if (db) {
-      const bookmarkRef = db.collection('users').doc(docId).collection('bookmarks').doc(id);
-
-      if (bookmarked) {
-        await bookmarkRef.set({ bookmarkedAt: new Date().toISOString() });
-      } else {
-        await bookmarkRef.delete();
-      }
+    if (!db) return NextResponse.json({ success: false, error: 'Bookmarks database is not configured. Changes were not saved.' }, { status: 503 });
+    const bookmarkRef = db.collection('users').doc(docId).collection('bookmarks').doc(id);
+    if (bookmarked) {
+      await bookmarkRef.set({ bookmarkedAt: new Date().toISOString() });
+    } else {
+      await bookmarkRef.delete();
     }
-
     return NextResponse.json({ success: true, id, bookmarked });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
