@@ -252,16 +252,18 @@ export default function StudyMaterialsPage() {
 
                 <button
                   onClick={() => {
-                    if (item.type === 'Link' && item.downloadUrl.startsWith('http')) {
-                      window.open(item.downloadUrl, '_blank');
+                    if (item.downloadUrl && item.downloadUrl.startsWith('http')) {
+                      window.open(item.downloadUrl, '_blank', 'noopener,noreferrer');
+                    } else if (item.content) {
+                      showToast('Text notes are shown on the material card.');
                     } else {
-                      showToast(`Downloading "${item.title}"...`);
+                      showToast('No file is attached to this resource yet.');
                     }
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white dark:bg-purple-950/40 dark:hover:bg-primary rounded-xl text-xs font-bold transition-all"
                 >
                   {item.type === 'Link' ? <LinkIcon className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
-                  <span>{item.type === 'Link' ? 'Open Resource' : 'Download'}</span>
+                  <span>{item.type === 'Link' ? 'Open Resource' : item.content && !item.downloadUrl ? 'Read Notes' : 'Open / Download'}</span>
                 </button>
               </div>
             </div>
