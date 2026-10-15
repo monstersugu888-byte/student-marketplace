@@ -2,7 +2,6 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { GraduationCap, User, Mail, Lock, BookOpen, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export default function TeacherRegisterPage() {
@@ -25,46 +24,30 @@ export default function TeacherRegisterPage() {
     }
     setBusy(true);
     try {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/login`,
-          data: {
-            full_name: name.trim(),
-            department: department.trim(),
-            staff_id: staffId.trim(),
-            requested_role: 'teacher',
-            teacher_access_status: 'pending',
-          },
-        },
-      });
-      if (signUpError) {
-        setError(signUpError.message);
-        return;
-      }
-      if (!signUpData.user) {
-        setError('Registration was not completed. Please try again.');
-        return;
-      }
-      const notification = await fetch('/api/teacher-registration', {
+      const response = await fetch('/api/teacher-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: signUpData.user.id }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          department: department.trim(),
+          staffId: staffId.trim(),
+          password,
+        }),
       });
-      const notificationData = await notification.json().catch(() => ({}));
-      if (!notification.ok) {
-        setError(notificationData.error || 'Your account was created, but the admin notification could not be sent. Contact the administrator before retrying registration.');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error || 'Teacher registration could not be completed. Please try again.');
         return;
       }
-      setSuccess('Teacher application submitted successfully. The administrator has been emailed. You will receive access only after approval.');
+      setSuccess(data.message || 'Teacher application submitted. The administrator has been emailed for approval.');
       setName('');
       setEmail('');
       setDepartment('');
       setStaffId('');
       setPassword('');
     } catch {
-      setError('Registration could not be completed. Please try again.');
+      setError('Registration could not be completed. Check your connection and try again.');
     } finally {
       setBusy(false);
     }
@@ -87,21 +70,21 @@ export default function TeacherRegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block text-sm font-semibold">Full name
-            <span className="relative mt-1 block"><User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Your full name" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
+            <span className="relative mt-1 block"><User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required maxLength={120} value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Your full name" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
           </label>
           <label className="block text-sm font-semibold">College / staff email
-            <span className="relative mt-1 block"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="teacher@college.edu" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
+            <span className="relative mt-1 block"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required type="email" maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="teacher@college.edu" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
           </label>
           <label className="block text-sm font-semibold">Department / subject
-            <span className="relative mt-1 block"><BookOpen className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required value={department} onChange={e=>setDepartment(e.target.value)} placeholder="e.g. Electronics Engineering" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
+            <span className="relative mt-1 block"><BookOpen className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required maxLength={120} value={department} onChange={e=>setDepartment(e.target.value)} placeholder="e.g. Electronics Engineering" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
           </label>
           <label className="block text-sm font-semibold">Staff ID (if available)
-            <input value={staffId} onChange={e=>setStaffId(e.target.value)} placeholder="College staff ID" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" />
+            <input maxLength={80} value={staffId} onChange={e=>setStaffId(e.target.value)} placeholder="College staff ID" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" />
           </label>
           <label className="block text-sm font-semibold">Create password
-            <span className="relative mt-1 block"><Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required type="password" minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete="new-password" placeholder="At least 8 characters" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
+            <span className="relative mt-1 block"><Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required type="password" minLength={8} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} autoComplete="new-password" placeholder="At least 8 characters" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
           </label>
-          <div className="rounded-xl bg-violet-50 p-3 text-sm text-violet-900 dark:bg-violet-950/40 dark:text-violet-200">Teacher registration does not automatically grant teacher privileges. An administrator must approve the account.</div>
+          <div className="rounded-xl bg-violet-50 p-3 text-sm text-violet-900 dark:bg-violet-950/40 dark:text-violet-200">Your application is reviewed by the CampusMate administrator. You cannot access teacher features until approved.</div>
           <button type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 p-3 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{busy ? 'Submitting…' : 'Submit teacher registration'} {!busy && <ArrowRight className="h-4 w-4" />}</button>
         </form>
         <div className="flex flex-col items-center gap-3 text-sm">
