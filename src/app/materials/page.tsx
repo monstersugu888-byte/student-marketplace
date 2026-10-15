@@ -23,7 +23,8 @@ import { supabase } from '@/lib/supabase/client';
 
 export default function StudyMaterialsPage() {
   const router = useRouter();
-  const { materials, toggleBookmarkMaterial, addMaterial, showToast, profile } = useApp();
+  const { materials, toggleBookmarkMaterial, addMaterial, showToast, profile, userRole, isAuthenticated } = useApp();
+  const isTeacher = isAuthenticated && userRole === 'teacher';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('All');
@@ -68,6 +69,7 @@ export default function StudyMaterialsPage() {
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isTeacher) { showToast('Only approved teachers can upload study materials.'); setIsUploadOpen(false); return; }
     if (!title.trim() || !subject.trim() || !courseCode.trim()) { showToast('Fill in the resource title, subject, and course code.'); return; }
     if (type === 'Link' && !linkUrl.trim()) { showToast('Enter a valid resource URL.'); return; }
     if (type !== 'Link' && type !== 'Notes' && !selectedFile) { showToast('Choose a file before tapping Upload Material.'); return; }
@@ -152,13 +154,13 @@ export default function StudyMaterialsPage() {
           </p>
         </div>
 
-        <button
+        {isTeacher && <button
           onClick={() => setIsUploadOpen(true)}
           className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 transition-all"
         >
           <Upload className="w-4 h-4" />
           <span>Upload Resource</span>
-        </button>
+        </button>}
       </div>
 
       {/* Filter and Search Bar */}
@@ -309,7 +311,7 @@ export default function StudyMaterialsPage() {
       )}
 
       {/* Upload Material Modal */}
-      <Modal
+      {isTeacher && <Modal
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         title="Upload Study Resource"
@@ -428,7 +430,7 @@ export default function StudyMaterialsPage() {
             </button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
 
       {/* Report Modal */}
       <Modal
