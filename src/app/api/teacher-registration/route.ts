@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const origin = req.nextUrl.origin;
     const approve = sign(userId, 'approve', exp);
     const reject = sign(userId, 'reject', exp);
-    const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+    const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replaceAll('"', '&quot;');
     const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#172033"><h2>CampusMate teacher access request</h2><p>A new teacher has requested access. Review the details before deciding.</p><table cellpadding="8" style="border-collapse:collapse"><tr><td><b>Name</b></td><td>${esc(metadata.full_name)}</td></tr><tr><td><b>Email</b></td><td>${esc(user.email)}</td></tr><tr><td><b>Department</b></td><td>${esc(metadata.department)}</td></tr><tr><td><b>Staff ID</b></td><td>${esc(metadata.staff_id || 'Not provided')}</td></tr></table><p>These links expire in 3 days. Opening a link does not decide the request; the next page requires a confirmation click.</p><p><a style="display:inline-block;padding:12px 18px;background:#15803d;color:white;text-decoration:none;border-radius:8px" href="${origin}/teacher-approval?token=${encodeURIComponent(approve)}">Review approval</a> <a style="display:inline-block;padding:12px 18px;background:#b91c1c;color:white;text-decoration:none;border-radius:8px" href="${origin}/teacher-approval?token=${encodeURIComponent(reject)}">Review rejection</a></p></div>`;
     const mail = await fetch('https://api.resend.com/emails', {
       method: 'POST',
