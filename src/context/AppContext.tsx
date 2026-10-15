@@ -275,6 +275,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Keep cloud data fresh without exposing a manual Sync button.
+  // Refresh on app startup, when the browser tab becomes active, and periodically.
+  useEffect(() => {
+    let running = false;
+    const syncInBackground = async () => {
+      if (running || document.visibilityState !== 'visible') return;
+      running = true;
+      try {
+        await refreshFromCloud();
+      } finally {
+        running = false;
+      }
+    };
+
+    void syncInBackground();
+    window.addEventListener('focus', syncInBackground);
+    document.addEventListener('visibilitychange', syncInBackground);
+    const intervalId = window.setInterval(syncInBackground, 60_000);
+
+    return () => {
+      window.removeEventListener('focus', syncInBackground);
+      document.removeEventListener('visibilitychange', syncInBackground);
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   const login = async (email: string, pass: string, name?: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
     if (error) {
