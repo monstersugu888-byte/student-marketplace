@@ -21,7 +21,6 @@ import {
   initialClasses,
   initialStudySessions,
   initialStudyMaterials,
-  initialMarketplaceListings,
   initialNotifications,
   initialDailyTasks,
   initialAttendances
