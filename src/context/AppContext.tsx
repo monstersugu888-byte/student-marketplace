@@ -30,6 +30,7 @@ import {
 interface AppContextType {
   // Auth state
   isAuthenticated: boolean;
+  userRole: 'student' | 'teacher';
   login: (email: string, pass: string, name?: string) => Promise<boolean>;
   register: (email: string, pass: string, name: string, major?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
@@ -99,6 +100,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [userRole, setUserRole] = useState<'student' | 'teacher'>('student');
   const [profile, setProfile] = useState<StudentProfile>(initialProfile);
   const [attendances, setAttendances] = useState<SubjectAttendance[]>(initialAttendances);
   const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments);
@@ -168,6 +170,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (sessionError) console.error('Supabase session error:', sessionError.message);
       const user = sessionData.session?.user;
       setIsAuthenticated(Boolean(user));
+      setUserRole(user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
+      setUserRole(user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
       if (user) {
         setProfile(prev => ({
           ...prev,
@@ -202,6 +206,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     load();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(Boolean(session));
+      setUserRole(session?.user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
     });
     const savedTheme = localStorage.getItem('cm_theme') as 'light' | 'dark' | null;
     if (savedTheme) {
@@ -278,6 +283,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     setIsAuthenticated(true);
+    const { data: sessionData } = await supabase.auth.getUser();
+    setUserRole(sessionData.user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
     setProfile(prev => ({ ...prev, email, name: name || email.split('@')[0] }));
     showToast('Signed in successfully');
     return true;
@@ -292,6 +299,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (error) return { success: false, message: error.message };
     if (!data.session) return { success: true, message: 'Account created. Check your email to confirm your account, then sign in.' };
     setIsAuthenticated(true);
+    setUserRole('student');
     setProfile(prev => ({ ...prev, email, name, major: major || 'Computer Science' }));
     return { success: true, message: 'Account created successfully.' };
   };
@@ -300,6 +308,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { error } = await supabase.auth.signOut({ scope: 'local' });
     if (error) throw error;
     setIsAuthenticated(false);
+    setUserRole('student');
     showToast('Logged out successfully');
   };
 
@@ -824,6 +833,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         isAuthenticated,
+        userRole,
         login,
         register,
         logout,
