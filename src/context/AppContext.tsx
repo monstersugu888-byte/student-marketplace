@@ -14,6 +14,7 @@ import {
   AssignmentStatus,
   Priority
 } from '../types';
+import { supabase } from '../lib/supabase/client';
 import {
   initialProfile,
   initialAssignments,
@@ -30,6 +31,7 @@ interface AppContextType {
   // Auth state
   isAuthenticated: boolean;
   login: (email: string, pass: string, name?: string) => Promise<boolean>;
+  register: (email: string, pass: string, name: string, major?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
 
   // Cloud Sync state
@@ -96,7 +98,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [profile, setProfile] = useState<StudentProfile>(initialProfile);
   const [attendances, setAttendances] = useState<SubjectAttendance[]>(initialAttendances);
   const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments);
@@ -157,33 +159,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [profile.email, profile.name]);
 
-  // Initial load
+  // Restore Supabase authentication and load marketplace listings.
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedAuth = localStorage.getItem('cm_auth');
-      if (savedAuth !== null) setIsAuthenticated(savedAuth === 'true');
-
-      const savedTheme = localStorage.getItem('cm_theme') as 'light' | 'dark';
-      if (savedTheme) {
-        setTheme(savedTheme);
-        if (savedTheme === 'dark') document.documentElement.classList.add('dark');
+    let active = true;
+    const load = async () => {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (!active) return;
+      if (sessionError) console.error('Supabase session error:', sessionError.message);
+      const user = sessionData.session?.user;
+      setIsAuthenticated(Boolean(user));
+      if (user) {
+        setProfile(prev => ({
+          ...prev,
+          email: user.email || prev.email,
+          name: String(user.user_metadata?.full_name || user.email?.split('@')[0] || prev.name),
+          major: String(user.user_metadata?.major || prev.major),
+        }));
       }
-
-      const savedProfile = localStorage.getItem('cm_profile');
-      let currentEmail = 'alex.rivera@campus.edu';
-      let currentName = 'Alex Rivera';
-      if (savedProfile) {
-        try {
-          const parsed = JSON.parse(savedProfile);
-          setProfile(parsed);
-          currentEmail = parsed.email || currentEmail;
-          currentName = parsed.name || currentName;
-        } catch (e) {}
+      const { data, error } = await supabase.from('marketplace_listings').select('*').order('created_at', { ascending: false });
+      if (!active) return;
+      if (error) {
+        console.error('Supabase listings load error:', error.message);
+      } else if (data) {
+        setListings(data.map((row: any) => ({
+          id: row.id,
+          title: row.title,
+          description: row.description || '',
+          price: Number(row.price),
+          category: row.category,
+          condition: row.item_condition,
+          status: row.status === 'active' ? 'Available' : row.status === 'reserved' ? 'Reserved' : 'Sold',
+          imageUrl: row.image_url || '',
+          postedDate: new Date(row.created_at).toLocaleDateString(),
+          sellerName: row.seller_name || 'Student seller',
+          sellerAvatar: row.seller_avatar || '',
+          sellerContact: row.seller_contact || '',
+          location: row.location || '',
+          isOwner: row.seller_id === user?.id,
+        })));
       }
-
-      // Sync with Firestore Cloud Backend
-      syncUserFromCloud(currentEmail, currentName);
+    };
+    load();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(Boolean(session));
+    });
+    const savedTheme = localStorage.getItem('cm_theme') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      if (savedTheme === 'dark') document.documentElement.classList.add('dark');
     }
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   // Save to LocalStorage cache
@@ -205,22 +233,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const login = async (email: string, pass: string, name?: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+      showToast(error.message);
+      return false;
+    }
     setIsAuthenticated(true);
-    localStorage.setItem('cm_auth', 'true');
-    const newProfile = {
-      ...profile,
-      email,
-      name: name || profile.name || email.split('@')[0],
-    };
-    setProfile(newProfile);
-    await syncUserFromCloud(email, name);
-    showToast('Welcome back, ' + (name || newProfile.name) + '! ☁️ Connected to Firestore');
+    setProfile(prev => ({ ...prev, email, name: name || email.split('@')[0] }));
+    showToast('Signed in successfully');
     return true;
   };
 
-  const logout = () => {
+  const register = async (email: string, pass: string, name: string, major?: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: pass,
+      options: { data: { full_name: name, major: major || 'Computer Science' } },
+    });
+    if (error) return { success: false, message: error.message };
+    if (!data.session) return { success: true, message: 'Account created. Check your email to confirm your account, then sign in.' };
+    setIsAuthenticated(true);
+    setProfile(prev => ({ ...prev, email, name, major: major || 'Computer Science' }));
+    return { success: true, message: 'Account created successfully.' };
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setIsAuthenticated(false);
-    localStorage.setItem('cm_auth', 'false');
     showToast('Logged out successfully');
   };
 
@@ -733,6 +772,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         isAuthenticated,
         login,
+        register,
         logout,
         isCloudSyncing,
         lastSyncedAt,
