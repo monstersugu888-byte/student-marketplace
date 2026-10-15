@@ -8,21 +8,28 @@ import { GraduationCap, Mail, Lock, User, BookOpen, ArrowRight } from 'lucide-re
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login, updateProfile } = useApp();
+  const { register } = useApp();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [major, setMajor] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password) return;
 
-    login(email, password);
-    if (name) {
-      updateProfile({ name, major: major || 'Computer Science' });
+    setError('');
+    setSuccess('');
+    const result = await register(email, password, name, major);
+    if (!result.success) {
+      setError(result.message);
+      return;
     }
+    setSuccess(result.message);
+    if (result.message.includes('Check your email')) return;
     router.push('/');
   };
 
@@ -41,6 +48,8 @@ export default function RegisterPage() {
           </p>
         </div>
 
+        {error && <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs text-center">{error}</div>}
+        {success && <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs text-center">{success}</div>}
         <form onSubmit={handleRegister} className="space-y-3.5 text-xs">
           <div>
             <label className="block font-bold text-purple-200 mb-1">
