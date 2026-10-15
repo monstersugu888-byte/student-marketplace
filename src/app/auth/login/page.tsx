@@ -14,15 +14,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please fill in both email and password.');
       return;
     }
     setError('');
-    login(email, password);
-    router.push('/');
+    const ok = await login(email, password);
+    if (ok) router.push('/');
+    else setError('Sign-in failed. Check your email and password, and confirm your email if required.');
   };
 
   const handleDemoLogin = () => {
@@ -98,23 +99,6 @@ export default function LoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        <div className="relative flex items-center justify-center py-2">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/15"></div>
-          </div>
-          <span className="relative px-3 text-[11px] font-semibold text-purple-300 bg-slate-900/50 rounded-full">
-            OR DEMO ACCESS
-          </span>
-        </div>
-
-        <button
-          onClick={handleDemoLogin}
-          className="w-full py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-        >
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Quick Log In as Alex Rivera (Demo)</span>
-        </button>
 
         <p className="text-center text-xs text-purple-200 pt-2">
           Don't have an account yet?{' '}
