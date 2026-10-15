@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
   LayoutDashboard,
@@ -22,6 +22,7 @@ import {
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const { profile, unreadCount, theme, toggleTheme, logout } = useApp();
 
   const navItems = [
@@ -43,10 +44,11 @@ export const Sidebar: React.FC = () => {
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 min-h-screen sticky top-0 shrink-0 select-none z-30">
       {/* Brand Header: client-side navigation avoids a full page reload */}
-      <Link
-        href="/"
-        aria-label="CampusMate home"
-        className="p-5 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      <button
+        type="button"
+        onClick={() => router.push('/')}
+        aria-label="Go to CampusMate dashboard"
+        className="w-full text-left p-5 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-700 via-purple-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-purple-500/20">
           <GraduationCap className="w-6 h-6" />
@@ -57,7 +59,7 @@ export const Sidebar: React.FC = () => {
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Student Portal</p>
         </div>
-      </Link>
+      </button>
 
       {/* Main Navigation Links */}
       <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
