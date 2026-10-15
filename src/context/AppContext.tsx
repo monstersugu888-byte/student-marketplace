@@ -634,21 +634,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       downloadsCount: 1,
       bookmarked: false,
     };
-    setMaterials(prev => [newMat, ...prev]);
-    showToast(`Study resource "${mat.title}" uploaded to Cloud ☁️`);
-
-    try {
-      await fetch('/api/materials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.email,
-          material: newMat,
-        }),
-      });
-    } catch (e) {
-      console.error('Cloud addMaterial error:', e);
+    const response = await fetch('/api/materials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: profile.email, material: newMat }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success === false) {
+      throw new Error(result.error || 'File uploaded, but saving its details failed. Please try again.');
     }
+    setMaterials(prev => [newMat, ...prev]);
+    showToast(`Study resource "${mat.title}" uploaded successfully.`);
   };
 
   // Marketplace Handlers with Cloud Firestore
