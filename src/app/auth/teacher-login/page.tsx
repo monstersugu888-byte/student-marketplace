@@ -76,6 +76,7 @@ export default function TeacherLoginPage() {
         </form>
 
         <p className="text-center text-xs text-slate-500">Teacher access is restricted. Student accounts cannot enter this portal.</p>
+        <p className="text-center text-sm text-slate-600 dark:text-slate-300">New teacher? <Link href="/auth/teacher-register" className="font-bold text-violet-600 hover:underline">Register here</Link></p>
         <div className="text-center">
           <Link href="/auth/login" className="inline-flex items-center gap-2 text-sm font-semibold text-violet-600 hover:underline"><ArrowLeft className="h-4 w-4" /> Back to student login</Link>
         </div>
