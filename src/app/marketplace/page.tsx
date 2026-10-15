@@ -225,11 +225,14 @@ export default function MarketplacePage() {
             >
               <div>
                 <div className="relative h-48 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400" aria-label="No product photo provided">
+                      <ShoppingBag className="w-10 h-10" />
+                      <span className="text-xs">No photo provided</span>
+                    </div>
+                  )}
                   <div className="absolute top-3 left-3 flex items-center gap-1.5">
                     <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm ${getStatusBadge(item.status)}`}>
                       {item.status}
@@ -240,7 +243,7 @@ export default function MarketplacePage() {
                   </div>
 
                   <span className="absolute bottom-3 right-3 px-3 py-1 rounded-xl text-sm font-extrabold bg-primary text-white shadow-md">
-                    ${item.price}
+                    {formatINR(item.price)}
                   </span>
                 </div>
 
@@ -263,11 +266,7 @@ export default function MarketplacePage() {
                   </p>
 
                   <div className="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                    <img
-                      src={item.sellerAvatar}
-                      alt={item.sellerName}
-                      className="w-7 h-7 rounded-full object-cover"
-                    />
+                    <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-200" aria-label="Seller initials">{item.sellerName.slice(0, 1).toUpperCase()}</div>
                     <div className="overflow-hidden">
                       <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                         {item.sellerName}
@@ -467,11 +466,7 @@ export default function MarketplacePage() {
       >
         <form onSubmit={handleSendMessage} className="space-y-4 text-xs">
           <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-            <img
-              src={contactingItem?.sellerAvatar}
-              alt={contactingItem?.sellerName}
-              className="w-10 h-10 rounded-full object-cover"
-            />
+            <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-200">{contactingItem?.sellerName.slice(0, 1).toUpperCase()}</div>
             <div>
               <p className="font-bold text-slate-900 dark:text-white">{contactingItem?.sellerName}</p>
               <p className="text-[11px] text-slate-500">{contactingItem?.sellerContact}</p>
