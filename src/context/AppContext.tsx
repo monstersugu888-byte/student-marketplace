@@ -374,9 +374,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     try {
+      const { data: authData } = await supabase.auth.getSession();
       await fetch('/api/attendance', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}) },
         body: JSON.stringify({
           userId: profile.email,
           id: subjectId,
@@ -399,6 +400,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     total: number,
     target: number = 75
   ) => {
+    if (userRole !== 'teacher') { showToast('Only approved teachers can create attendance subjects.'); return; }
     const newSub: SubjectAttendance = {
       id: 'att_' + Date.now(),
       subject,
@@ -413,9 +415,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Added ${subject} to Attendance Tracker ☁️`);
 
     try {
+      const { data: authData } = await supabase.auth.getSession();
       await fetch('/api/attendance', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}) },
         body: JSON.stringify({
           userId: profile.email,
           subject: newSub,
@@ -432,6 +435,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     total: number,
     target?: number
   ) => {
+    if (userRole !== 'teacher') { showToast('Only approved teachers can edit attendance.'); return; }
     setAttendances(prev => prev.map(a => {
       if (a.id === id) {
         return {
@@ -465,12 +469,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteSubjectAttendance = async (id: string) => {
+    if (userRole !== 'teacher') { showToast('Only approved teachers can delete attendance subjects.'); return; }
     setAttendances(prev => prev.filter(a => a.id !== id));
     showToast('Subject removed from Attendance Tracker ☁️');
 
     try {
+      const { data: authData } = await supabase.auth.getSession();
       await fetch(`/api/attendance?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
+        headers: authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {},
       });
     } catch (e) {
       console.error('Cloud deleteSubjectAttendance error:', e);
@@ -479,6 +486,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Assignments Handlers with Cloud Firestore
   const addAssignment = async (asg: Omit<Assignment, 'id' | 'createdAt'>) => {
+    if (userRole !== 'teacher') { showToast('Only approved teachers can create assignments.'); return; }
     const newAsg: Assignment = {
       ...asg,
       id: 'asg_' + Date.now(),
@@ -627,6 +635,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addMaterial = async (mat: Omit<StudyMaterial, 'id' | 'downloadsCount' | 'uploadDate'>) => {
+    if (userRole !== 'teacher') throw new Error('Only approved teachers can upload study materials.');
     const newMat: StudyMaterial = {
       ...mat,
       id: 'mat_' + Date.now(),
@@ -634,9 +643,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       downloadsCount: 1,
       bookmarked: false,
     };
+    const { data: authData } = await supabase.auth.getSession();
     const response = await fetch('/api/materials', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}) },
       body: JSON.stringify({ userId: profile.email, material: newMat }),
     });
     const result = await response.json().catch(() => ({}));
