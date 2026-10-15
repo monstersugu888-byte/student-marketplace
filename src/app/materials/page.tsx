@@ -18,9 +18,10 @@ import {
 } from 'lucide-react';
 import { Modal } from '@/components/common/Modal';
 import { StudyMaterial } from '@/types';
+import { supabase } from '@/lib/supabase/client';
 
 export default function StudyMaterialsPage() {
-  const { materials, toggleBookmarkMaterial, addMaterial, showToast } = useApp();
+  const { materials, toggleBookmarkMaterial, addMaterial, showToast, profile } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('All');
@@ -33,9 +34,11 @@ export default function StudyMaterialsPage() {
   const [subject, setSubject] = useState('');
   const [courseCode, setCourseCode] = useState('');
   const [semester, setSemester] = useState('5th Semester');
-  const [type, setType] = useState<'PDF' | 'Notes' | 'Slides' | 'Lab Manual' | 'Link'>('PDF');
+  const [type, setType] = useState<'PDF' | 'Notes' | 'Slides' | 'Lab Manual' | 'Link' | 'Image'>('PDF');
   const [linkUrl, setLinkUrl] = useState('');
-  const [fileSize, setFileSize] = useState('2.4 MB');
+  const [noteText, setNoteText] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Report modal state
   const [reportingItem, setReportingItem] = useState<StudyMaterial | null>(null);
@@ -61,26 +64,29 @@ export default function StudyMaterialsPage() {
     });
   }, [materials, searchQuery, selectedSemester, selectedType, showBookmarksOnly]);
 
-  const handleUploadSubmit = (e: React.FormEvent) => {
+  const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !subject || !courseCode) return;
-
-    addMaterial({
-      title,
-      subject,
-      courseCode,
-      semester,
-      type,
-      fileSize: type === 'Link' ? 'External Web Resource' : fileSize,
-      uploadedBy: 'Alex Rivera',
-      downloadUrl: type === 'Link' ? (linkUrl || '#') : '#',
-    });
-
-    setTitle('');
-    setSubject('');
-    setCourseCode('');
-    setLinkUrl('');
-    setIsUploadOpen(false);
+    if (!title.trim() || !subject.trim() || !courseCode.trim()) return;
+    if (type === 'Link' && !linkUrl.trim()) { showToast('Enter a valid resource URL.'); return; }
+    if (type !== 'Link' && type !== 'Notes' && !selectedFile) { showToast('Choose a PDF, image, or presentation file to upload.'); return; }
+    if (selectedFile && selectedFile.size > 20 * 1024 * 1024) { showToast('File is too large. Maximum file size is 20 MB.'); return; }
+    setIsSubmitting(true);
+    try {
+      let downloadUrl = type === 'Link' ? linkUrl.trim() : '';
+      let fileSize = noteText.trim() ? 'Text notes' : '';
+      if (selectedFile) {
+        const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const storagePath = `${Date.now()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from('study-materials').upload(storagePath, selectedFile, { cacheControl: '3600', upsert: false, contentType: selectedFile.type || undefined });
+        if (uploadError) throw uploadError;
+        downloadUrl = supabase.storage.from('study-materials').getPublicUrl(storagePath).data.publicUrl;
+        fileSize = `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`;
+      }
+      await addMaterial({ title: title.trim(), subject: subject.trim(), courseCode: courseCode.trim(), semester, type, fileSize, uploadedBy: profile.name || profile.email, downloadUrl, content: noteText.trim(), imageUrl: selectedFile?.type.startsWith('image/') ? downloadUrl : '' });
+      setTitle(''); setSubject(''); setCourseCode(''); setLinkUrl(''); setNoteText(''); setSelectedFile(null); setIsUploadOpen(false);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Upload failed. Check the study-materials storage bucket.');
+    } finally { setIsSubmitting(false); }
   };
 
   const handleReportSubmit = (e: React.FormEvent) => {
@@ -164,6 +170,7 @@ export default function StudyMaterialsPage() {
               <option value="Notes">Lecture Notes</option>
               <option value="Slides">Slides</option>
               <option value="Link">External Links</option>
+              <option value="Image">Images</option>
             </select>
 
             {/* Bookmarks Toggle */}
@@ -227,9 +234,11 @@ export default function StudyMaterialsPage() {
                   {item.courseCode} • {item.subject}
                 </span>
 
+                {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-36 object-cover rounded-xl my-3" /> : null}
                 <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white leading-snug mt-1 mb-2">
                   {item.title}
                 </h3>
+                {item.content ? <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap line-clamp-4 mb-3">{item.content}</p> : null}
 
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Uploaded by <span className="font-semibold text-slate-700 dark:text-slate-300">{item.uploadedBy}</span> on {item.uploadDate}
@@ -345,28 +354,22 @@ export default function StudyMaterialsPage() {
 
           {type === 'Link' ? (
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Resource URL *
-              </label>
-              <input
-                type="url"
-                required
-                placeholder="https://..."
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
-              />
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Resource URL *</label>
+              <input type="url" required placeholder="https://..." value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white" />
             </div>
           ) : (
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Attach File
-              </label>
-              <input
-                type="file"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white"
-              />
-            </div>
+            <>
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Attach PDF, photo, or slide file</label>
+                <input type="file" accept={type === 'PDF' ? '.pdf,application/pdf' : type === 'Image' ? 'image/*' : '.pdf,.ppt,.pptx,.doc,.docx,image/*'} onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white" />
+                <p className="text-[11px] text-slate-500 mt-1">Maximum 20 MB. Files are uploaded to Supabase Storage.</p>
+                {selectedFile ? <p className="text-[11px] text-primary mt-1">{selectedFile.name}</p> : null}
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Text notes / description (optional)</label>
+                <textarea rows={4} placeholder="Paste notes or explain what this resource contains..." value={noteText} onChange={(e) => setNoteText(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white" />
+              </div>
+            </>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
