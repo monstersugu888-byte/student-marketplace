@@ -15,8 +15,6 @@ import {
   ShoppingBag,
   CheckCircle,
   FileText,
-  Cloud,
-  RefreshCw
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -26,7 +24,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenQuickAdd }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, unreadCount, theme, toggleTheme, notifications, isCloudSyncing, refreshFromCloud } = useApp();
+  const { profile, unreadCount, theme, toggleTheme, notifications } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
@@ -80,16 +78,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenQuickAdd }) => {
 
       {/* Search Bar & Cloud Sync & Quick Actions */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Cloud Sync Status Badge */}
-        <button
-          onClick={refreshFromCloud}
-          title="Click to synchronize with Google Cloud Firestore"
-          className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 text-[11px] font-bold text-primary dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 transition-colors"
-        >
-          <Cloud className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin text-amber-500' : 'text-primary dark:text-purple-400'}`} />
-          <span>{isCloudSyncing ? 'Syncing...' : 'Firestore Cloud'}</span>
-        </button>
-
         <form onSubmit={handleSearchSubmit} className="relative hidden lg:block w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
