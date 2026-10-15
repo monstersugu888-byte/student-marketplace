@@ -36,8 +36,8 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen || typeof document === 'undefined') return null;
 
   return createPortal((
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className={`w-full ${maxWidth} max-h-[90vh] max-h-[90dvh] flex flex-col bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all`}>
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/70 animate-fade-in">
+      <div className={`w-full ${maxWidth} h-[85vh] h-[85dvh] max-h-[85vh] max-h-[85dvh] flex flex-col bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden`}>
         <div className="flex shrink-0 items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800">
           <h3 className="text-lg font-bold font-heading text-slate-900 dark:text-white">
             {title}
@@ -49,7 +49,7 @@ export const Modal: React.FC<ModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-5 sm:p-6 min-h-0 overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        <div className="p-5 sm:p-6 flex-1 min-h-0 overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
           {children}
         </div>
       </div>
