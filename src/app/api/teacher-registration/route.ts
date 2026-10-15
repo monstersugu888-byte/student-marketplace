@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
 
 export const runtime = 'nodejs';
-const adminEmail = 'moonjikko2@gmail.com';
+const adminEmail = process.env.TEACHER_APPROVAL_EMAIL || 'moonjikko2@gmail.com';
 const secret = () => process.env.TEACHER_APPROVAL_SECRET;
 const supabaseUrl = () => process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -88,10 +88,22 @@ export async function POST(req: NextRequest) {
     });
     if (!mail.ok) {
       const details = await mail.text();
-      console.error('Resend send failed:', details);
+      console.error('Resend send failed:', mail.status, details);
       // Avoid leaving a hidden pending account if no approval request was sent.
       await adminAuth(`users/${encodeURIComponent(createdUserId)}`, 'DELETE').catch(() => undefined);
-      return NextResponse.json({ error: 'The approval email could not be sent, so the application was not saved. Check the Resend API key and sender settings, then try again.' }, { status: 502 });
+      let resendMessage = '';
+      try {
+        const parsed = JSON.parse(details);
+        resendMessage = String(parsed.message || parsed.error || '');
+      } catch {
+        resendMessage = details.slice(0, 300);
+      }
+      const domainHelp = mail.status === 403 || /testing emails|verify a domain|verified domain|own email address/i.test(resendMessage)
+        ? ' Resend test mode only allows delivery to the email address on your Resend account. To send approval requests to moonjikko2@gmail.com, verify a domain in Resend and set RESEND_FROM_EMAIL to an address on that verified domain.'
+        : '';
+      return NextResponse.json({
+        error: `The approval email failed (Resend HTTP ${mail.status}). The application was not saved.${domainHelp} Check the Resend Emails log for details.`,
+      }, { status: 502 });
     }
 
     return NextResponse.json({ success: true, message: 'Application submitted. The administrator has been emailed for approval.' });
