@@ -18,8 +18,7 @@ import {
   BookOpen,
   CheckCircle2,
   Trash2,
-  Database,
-} from 'lucide-react';
+  } from 'lucide-react';
 import { Modal } from '@/components/common/Modal';
 
 export default function ProfilePage() {
@@ -32,8 +31,7 @@ export default function ProfilePage() {
     toggleTheme,
     logout,
     showToast,
-    isCloudSyncing
-  } = useApp();
+    } = useApp();
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [name, setName] = useState(profile.name);
@@ -106,30 +104,6 @@ export default function ProfilePage() {
             </span>
           </div>
         </div>
-      </div>
-
-      {/* Cloud Firestore Backend Status Card */}
-      <div className="bg-gradient-to-r from-purple-900/40 via-indigo-900/30 to-slate-900/40 border border-purple-500/30 rounded-2xl p-5 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3 bg-purple-600/20 text-purple-400 rounded-xl border border-purple-500/30">
-            <Database className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white">
-                Supabase Backend Database
-              </h4>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold text-[10px] border border-emerald-500/30">
-                ACTIVE
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Your account and marketplace listings are connected to Supabase. Other dashboard modules are still being migrated.
-            </p>
-          </div>
-        </div>
-
-
       </div>
 
       {/* Academic Details Card */}
