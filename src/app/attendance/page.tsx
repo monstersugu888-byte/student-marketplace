@@ -410,7 +410,7 @@ export default function AttendancePage() {
       </Modal>}
 
       {/* Edit Counts Modal */}
-      <Modal
+      {isTeacher && <Modal
         isOpen={editingItem !== null}
         onClose={() => setEditingItem(null)}
         title={`Edit Attendance - ${editingItem?.subject}`}
@@ -474,7 +474,7 @@ export default function AttendancePage() {
             </button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
     </div>
   );
 }
