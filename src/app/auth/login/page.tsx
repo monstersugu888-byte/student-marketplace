@@ -106,6 +106,13 @@ export default function LoginPage() {
             Register here
           </Link>
         </p>
+        <div className="border-t border-white/15 pt-4 text-center">
+          <p className="mb-2 text-xs text-purple-200">Are you a teacher?</p>
+          <Link href="/teacher/login" className="inline-flex items-center gap-2 rounded-xl border border-purple-300/40 bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">
+            <ShieldCheck className="h-4 w-4" />
+            Teacher Login Portal
+          </Link>
+        </div>
       </div>
     </div>
   );
