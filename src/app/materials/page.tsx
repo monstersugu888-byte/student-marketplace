@@ -73,16 +73,18 @@ export default function StudyMaterialsPage() {
     setIsSubmitting(true);
     try {
       let downloadUrl = type === 'Link' ? linkUrl.trim() : '';
+      let storagePath = '';
       let fileSize = noteText.trim() ? 'Text notes' : '';
       if (selectedFile) {
         const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const storagePath = `${Date.now()}-${safeName}`;
+        storagePath = `${Date.now()}-${safeName}`;
         const { error: uploadError } = await supabase.storage.from('study-materials').upload(storagePath, selectedFile, { cacheControl: '3600', upsert: false, contentType: selectedFile.type || undefined });
         if (uploadError) throw uploadError;
-        downloadUrl = supabase.storage.from('study-materials').getPublicUrl(storagePath).data.publicUrl;
+        // Bucket stays private. Create a temporary signed URL when the user opens the material.
+        downloadUrl = '';
         fileSize = `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`;
       }
-      await addMaterial({ title: title.trim(), subject: subject.trim(), courseCode: courseCode.trim(), semester, type, fileSize, uploadedBy: profile.name || profile.email, downloadUrl, content: noteText.trim(), imageUrl: selectedFile?.type.startsWith('image/') ? downloadUrl : '' });
+      await addMaterial({ title: title.trim(), subject: subject.trim(), courseCode: courseCode.trim(), semester, type, fileSize, uploadedBy: profile.name || profile.email, downloadUrl, storagePath, content: noteText.trim(), imageUrl: selectedFile?.type.startsWith('image/') ? '' : '' });
       setTitle(''); setSubject(''); setCourseCode(''); setLinkUrl(''); setNoteText(''); setSelectedFile(null); setIsUploadOpen(false);
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Upload failed. Check the study-materials storage bucket.');
@@ -251,13 +253,22 @@ export default function StudyMaterialsPage() {
                 </span>
 
                 <button
-                  onClick={() => {
-                    if (item.downloadUrl && item.downloadUrl.startsWith('http')) {
-                      window.open(item.downloadUrl, '_blank', 'noopener,noreferrer');
-                    } else if (item.content) {
-                      showToast('Text notes are shown on the material card.');
-                    } else {
-                      showToast('No file is attached to this resource yet.');
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      if (item.storagePath) {
+                        const { data, error } = await supabase.storage.from('study-materials').createSignedUrl(item.storagePath, 60 * 10, { download: item.type === 'PDF' });
+                        if (error || !data?.signedUrl) throw error || new Error('Could not create a file link.');
+                        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+                      } else if (item.downloadUrl && item.downloadUrl.startsWith('http')) {
+                        window.open(item.downloadUrl, '_blank', 'noopener,noreferrer');
+                      } else if (item.content) {
+                        showToast('Text notes are shown on the material card.');
+                      } else {
+                        showToast('This resource has no attached file. Upload it again with a file selected.');
+                      }
+                    } catch (error) {
+                      showToast(error instanceof Error ? error.message : 'Could not open this file. Check Storage read policies.');
                     }
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white dark:bg-purple-950/40 dark:hover:bg-primary rounded-xl text-xs font-bold transition-all"
