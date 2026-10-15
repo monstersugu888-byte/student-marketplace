@@ -19,8 +19,6 @@ import {
   CheckCircle2,
   Trash2,
   Database,
-  Cloud,
-  RefreshCw
 } from 'lucide-react';
 import { Modal } from '@/components/common/Modal';
 
@@ -34,9 +32,7 @@ export default function ProfilePage() {
     toggleTheme,
     logout,
     showToast,
-    isCloudSyncing,
-    lastSyncedAt,
-    refreshFromCloud
+    isCloudSyncing
   } = useApp();
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -133,14 +129,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <button
-          onClick={refreshFromCloud}
-          disabled={isCloudSyncing}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold transition-all shrink-0"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
-          <span>{isCloudSyncing ? 'Syncing...' : 'Sync Supabase'}</span>
-        </button>
+
       </div>
 
       {/* Academic Details Card */}
