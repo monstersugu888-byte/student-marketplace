@@ -267,7 +267,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isOwner: row.seller_id === user?.id,
       })));
       setLastSyncedAt(new Date());
-      showToast('Synced profile and marketplace with Supabase.');
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Supabase sync failed.');
     } finally {
