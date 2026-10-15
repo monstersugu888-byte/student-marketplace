@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase/admin';
 import { requireTeacher, requireUser, verifiedUserDocumentId } from '@/lib/supabase/request-auth';
 
+const idPattern = /^[a-zA-Z0-9_-]{1,120}$/;
+
 const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_');
 
 export async function GET(req: NextRequest) {
@@ -24,7 +26,7 @@ export async function GET(req: NextRequest) {
       return {
         id: doc.id,
         ...data,
-        bookmarked: bookmarkedIds.has(doc.id) || (data.bookmarked ?? false),
+        bookmarked: bookmarkedIds.has(doc.id),
       };
     });
 
@@ -42,18 +44,29 @@ export async function POST(req: NextRequest) {
     const { material } = body;
     if (!material || typeof material !== 'object') return NextResponse.json({ success: false, error: 'Material data is required.' }, { status: 400 });
 
-    const matId = material.id || 'mat_' + Date.now();
+    const matId = typeof material.id === 'string' && idPattern.test(material.id) ? material.id : 'mat_' + crypto.randomUUID();
     const matData = {
-      ...material,
+      title: String(material.title || '').trim(),
+      subject: String(material.subject || ''),
+      courseCode: String(material.courseCode || ''),
+      semester: String(material.semester || ''),
+      type: String(material.type || 'PDF'),
+      content: typeof material.content === 'string' ? material.content : '',
+      imageUrl: String(material.imageUrl || ''),
+      storagePath: String(material.storagePath || ''),
+      fileSize: String(material.fileSize || ''),
+      uploadedBy: String(auth.user!.user_metadata?.full_name || auth.user!.email),
+      downloadUrl: String(material.downloadUrl || ''),
       id: matId,
       uploaderId: auth.user!.id,
-      uploadDate: material.uploadDate || new Date().toISOString().split('T')[0],
+      uploadDate: new Date().toISOString().split('T')[0],
       downloadsCount: 0,
     };
+    if (!matData.title) return NextResponse.json({ success: false, error: 'A material title is required.' }, { status: 400 });
 
     if (!db) return NextResponse.json({ success: false, error: 'Study materials database is not configured. Material was not saved.' }, { status: 503 });
-    await db.collection('study_materials').doc(matId).set(matData);
-    return NextResponse.json({ success: true, material: matData });
+    await db.collection('study_materials').doc(matId).create(matData);
+    return NextResponse.json({ success: true, material: matData }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
