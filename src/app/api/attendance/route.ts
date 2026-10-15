@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase/admin';
+import { requireTeacher } from '@/lib/supabase/request-auth';
 
 const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_');
 
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireTeacher(req);
+  if (auth.response) return auth.response;
   try {
     const body = await req.json();
     const { userId, subject } = body;
@@ -46,6 +49,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const auth = await requireTeacher(req);
+  if (auth.response) return auth.response;
   try {
     const body = await req.json();
     const { userId, id, updated, action, status, date, note } = body;
@@ -104,6 +109,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const auth = await requireTeacher(req);
+  if (auth.response) return auth.response;
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
