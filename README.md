@@ -78,3 +78,19 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   ├── lib/                 # Firebase Admin Firestore SDK configuration
 │   └── types/               # TypeScript Data Interfaces
 ```
+
+
+## Teacher access approval email setup
+
+Teacher registrations remain pending until an administrator approves them. The registration route sends a Resend notification to `moonjikko2@gmail.com`; the email links open a confirmation page, and a server-side action updates Supabase Auth `app_metadata`. Student registration and student login remain separate.
+
+Configure these values in **Vercel → Project → Settings → Environment Variables** for Production (and Preview if you test there):
+
+- `NEXT_PUBLIC_SUPABASE_URL` — your Supabase project URL (already used by the app)
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — your Supabase publishable/anon key (already used by the app)
+- `SUPABASE_SERVICE_ROLE_KEY` — server-only Supabase service-role key; never use a `NEXT_PUBLIC_` prefix
+- `RESEND_API_KEY` — API key from Resend
+- `RESEND_FROM_EMAIL` — sender address verified in Resend, e.g. `CampusMate <no-reply@your-verified-domain>`
+- `TEACHER_APPROVAL_SECRET` — a long random secret used to sign expiring approval tokens (at least 32 random bytes)
+
+After saving variables, redeploy the production deployment. Approval links expire after 3 days and require a confirmation click. The server accepts decisions only while the account is still pending. Email delivery requires a verified Resend sender/domain. Do not commit real secrets to GitHub.

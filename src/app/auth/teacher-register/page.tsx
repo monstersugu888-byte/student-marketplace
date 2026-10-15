@@ -25,7 +25,7 @@ export default function TeacherRegisterPage() {
     }
     setBusy(true);
     try {
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -43,7 +43,21 @@ export default function TeacherRegisterPage() {
         setError(signUpError.message);
         return;
       }
-      setSuccess('Registration submitted. Check your email if verification is required. Your account must be approved by an administrator before you can use the Teacher Portal.');
+      if (!signUpData.user) {
+        setError('Registration was not completed. Please try again.');
+        return;
+      }
+      const notification = await fetch('/api/teacher-registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: signUpData.user.id }),
+      });
+      const notificationData = await notification.json().catch(() => ({}));
+      if (!notification.ok) {
+        setError(notificationData.error || 'Your account was created, but the admin notification could not be sent. Contact the administrator before retrying registration.');
+        return;
+      }
+      setSuccess('Teacher application submitted successfully. The administrator has been emailed. You will receive access only after approval.');
       setName('');
       setEmail('');
       setDepartment('');
