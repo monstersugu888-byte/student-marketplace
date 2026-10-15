@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase/admin';
-import { requireTeacher } from '@/lib/supabase/request-auth';
+import { requireTeacher, requireUser, verifiedUserDocumentId } from '@/lib/supabase/request-auth';
 
 const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_');
 
 export async function GET(req: NextRequest) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
   try {
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
-    const docId = sanitizeId(userId);
+    const docId = verifiedUserDocumentId(auth.user!.email!);
 
     if (!db) {
       return NextResponse.json({ success: true, materials: [] });
@@ -38,15 +39,16 @@ export async function POST(req: NextRequest) {
   if (auth.response) return auth.response;
   try {
     const body = await req.json();
-    const { userId, material } = body;
+    const { material } = body;
+    if (!material || typeof material !== 'object') return NextResponse.json({ success: false, error: 'Material data is required.' }, { status: 400 });
 
     const matId = material.id || 'mat_' + Date.now();
     const matData = {
       ...material,
       id: matId,
-      uploaderId: sanitizeId(userId || 'alex.rivera@campus.edu'),
+      uploaderId: auth.user!.id,
       uploadDate: material.uploadDate || new Date().toISOString().split('T')[0],
-      downloadsCount: material.downloadsCount || 1,
+      downloadsCount: 0,
     };
 
     if (db) {
@@ -59,10 +61,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
   try {
     const body = await req.json();
-    const { userId, id, bookmarked } = body;
-    const docId = sanitizeId(userId || 'alex.rivera@campus.edu');
+    const { id, bookmarked } = body;
+    if (typeof id !== 'string' || !id) return NextResponse.json({ success: false, error: 'Material ID is required.' }, { status: 400 });
+    const docId = verifiedUserDocumentId(auth.user!.email!);
 
     if (db) {
       const bookmarkRef = db.collection('users').doc(docId).collection('bookmarks').doc(id);
