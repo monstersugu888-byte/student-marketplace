@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       : verifiedUserDocumentId(auth.user!.email!);
 
     if (!db) {
-      return NextResponse.json({ success: true, attendances: [] });
+      return NextResponse.json({ success: false, error: 'Attendance database is not configured.' }, { status: 503 });
     }
 
     const snapshot = await db.collection('users').doc(docId).collection('attendance').get();
@@ -43,9 +43,8 @@ export async function POST(req: NextRequest) {
       history: subject.history || [],
     };
 
-    if (db) {
-      await db.collection('users').doc(docId).collection('attendance').doc(attId).set(attData);
-    }
+    if (!db) return NextResponse.json({ success: false, error: 'Attendance database is not configured. Changes were not saved.' }, { status: 503 });
+    await db.collection('users').doc(docId).collection('attendance').doc(attId).set(attData);
 
     return NextResponse.json({ success: true, subject: attData });
   } catch (error: any) {
@@ -63,9 +62,7 @@ export async function PUT(req: NextRequest) {
       ? sanitizeId(userId)
       : verifiedUserDocumentId(auth.user!.email!);
 
-    if (!db) {
-      return NextResponse.json({ success: true, id });
-    }
+    if (!db) return NextResponse.json({ success: false, error: 'Attendance database is not configured. Changes were not saved.' }, { status: 503 });
 
     const attRef = db.collection('users').doc(docId).collection('attendance').doc(id);
 
@@ -126,9 +123,8 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
 
     const docId = sanitizeId(userId);
-    if (db) {
-      await db.collection('users').doc(docId).collection('attendance').doc(id).delete();
-    }
+    if (!db) return NextResponse.json({ success: false, error: 'Attendance database is not configured. Record was not deleted.' }, { status: 503 });
+    await db.collection('users').doc(docId).collection('attendance').doc(id).delete();
 
     return NextResponse.json({ success: true, id });
   } catch (error: any) {
