@@ -34,3 +34,10 @@ create policy "Users can delete own Studora records"
 
 create index if not exists studora_user_data_collection_idx
   on public.studora_user_data (user_id, collection);
+
+-- Approved teachers may manage student records needed for assignments and attendance.
+drop policy if exists "Approved teachers can manage Studora records" on public.studora_user_data;
+create policy "Approved teachers can manage Studora records"
+  on public.studora_user_data for all to authenticated
+  using ((auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher')
+  with check ((auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher');
