@@ -1,76 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase/admin';
-
-const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_');
+import { requireSupabaseUser, readStudoraRecords, writeStudoraRecord, deleteStudoraRecord } from '@/lib/supabase/studora-data';
 
 export async function GET(req: NextRequest) {
+  const auth = await requireSupabaseUser(req);
+  if (auth.response) return auth.response;
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
-    const docId = sanitizeId(userId);
-
-    if (!db) {
-      return NextResponse.json({ success: true, tasks: [] });
-    }
-
-    const snapshot = await db.collection('users').doc(docId).collection('tasks').get();
-    const tasks = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-
+    const tasks = await readStudoraRecords(auth.client!, 'tasks');
     return NextResponse.json({ success: true, tasks });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+  } catch { return NextResponse.json({ success: false, error: 'Unable to load tasks. Run the Supabase migration first.' }, { status: 500 }); }
 }
-
 export async function POST(req: NextRequest) {
+  const auth = await requireSupabaseUser(req);
+  if (auth.response) return auth.response;
   try {
-    const body = await req.json();
-    const { userId, task } = body;
-    const docId = sanitizeId(userId || 'alex.rivera@campus.edu');
-
-    const taskId = task.id || 'tsk_' + Date.now();
-    const taskData = { ...task, id: taskId };
-
-    if (db) {
-      await db.collection('users').doc(docId).collection('tasks').doc(taskId).set(taskData);
-    }
-    return NextResponse.json({ success: true, task: taskData });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+    const { task } = await req.json();
+    if (!task || typeof task !== 'object') return NextResponse.json({ success:false,error:'Task is required.' }, {status:400});
+    const id = String(task.id || 'tsk_' + Date.now());
+    const record = { ...task, id };
+    await writeStudoraRecord(auth.client!, auth.user!.id, 'tasks', id, record);
+    return NextResponse.json({ success:true, task:record });
+  } catch { return NextResponse.json({ success:false,error:'Unable to save task. Run the Supabase migration first.' },{status:500}); }
 }
-
 export async function PUT(req: NextRequest) {
+  const auth = await requireSupabaseUser(req);
+  if (auth.response) return auth.response;
   try {
-    const body = await req.json();
-    const { userId, id, completed } = body;
-    const docId = sanitizeId(userId || 'alex.rivera@campus.edu');
-
-    if (db) {
-      const taskRef = db.collection('users').doc(docId).collection('tasks').doc(id);
-      await taskRef.set({ completed }, { merge: true });
-    }
-
-    return NextResponse.json({ success: true, id, completed });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+    const { id, completed } = await req.json();
+    if (!id) return NextResponse.json({success:false,error:'Task ID is required.'},{status:400});
+    const { data, error } = await auth.client!.from('studora_user_data').select('data').eq('user_id',auth.user!.id).eq('collection','tasks').eq('record_id',String(id)).maybeSingle();
+    if (error) throw error;
+    if (!data) return NextResponse.json({success:false,error:'Task not found.'},{status:404});
+    await writeStudoraRecord(auth.client!,auth.user!.id,'tasks',String(id),{...(data.data as Record<string,unknown>),completed:!!completed});
+    return NextResponse.json({success:true,id,completed:!!completed});
+  } catch { return NextResponse.json({success:false,error:'Unable to update task.'},{status:500}); }
 }
-
 export async function DELETE(req: NextRequest) {
+  const auth = await requireSupabaseUser(req);
+  if (auth.response) return auth.response;
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
-
-    const docId = sanitizeId(userId);
-    if (db) {
-      await db.collection('users').doc(docId).collection('tasks').doc(id).delete();
-    }
-
-    return NextResponse.json({ success: true, id });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+    const id = new URL(req.url).searchParams.get('id');
+    if (!id) return NextResponse.json({success:false,error:'Task ID is required.'},{status:400});
+    await deleteStudoraRecord(auth.client!, 'tasks', id);
+    return NextResponse.json({success:true,id});
+  } catch { return NextResponse.json({success:false,error:'Unable to delete task.'},{status:500}); }
 }
