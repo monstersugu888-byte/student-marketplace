@@ -1,42 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase/admin';
-
-const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_');
-
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId') || 'alex.rivera@campus.edu';
-    const docId = sanitizeId(userId);
-
-    const userDoc = await db.collection('users').doc(docId).get();
-    if (!userDoc.exists) {
-      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, profile: userDoc.data()?.profile });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
-
-export async function PUT(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { userId, updatedProfile } = body;
-    const docId = sanitizeId(userId || 'alex.rivera@campus.edu');
-
-    const userRef = db.collection('users').doc(docId);
-    await userRef.set(
-      {
-        profile: updatedProfile,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-
-    return NextResponse.json({ success: true, profile: updatedProfile });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
+import { requireSupabaseUser, writeStudoraRecord } from '@/lib/supabase/studora-data';
+export async function GET(req:NextRequest){const a=await requireSupabaseUser(req);if(a.response)return a.response;try{const {data,error}=await a.client!.from('studora_user_data').select('data').eq('user_id',a.user!.id).eq('collection','profile').eq('record_id','profile').maybeSingle();if(error)throw error;return NextResponse.json({success:true,profile:data?.data||a.user!.user_metadata||{email:a.user!.email}});}catch{return NextResponse.json({success:false,error:'Unable to load profile.'},{status:500});}}
+export async function PUT(req:NextRequest){const a=await requireSupabaseUser(req);if(a.response)return a.response;try{const {updatedProfile}=await req.json();if(!updatedProfile||typeof updatedProfile!=='object')return NextResponse.json({success:false,error:'Profile is required.'},{status:400});await writeStudoraRecord(a.client!,a.user!.id,'profile','profile',updatedProfile);return NextResponse.json({success:true,profile:updatedProfile});}catch{return NextResponse.json({success:false,error:'Unable to save profile.'},{status:500});}}
