@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import {
   UserCheck,
@@ -139,6 +140,7 @@ export default function AttendancePage() {
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Monitor course attendance percentages, track threshold limits (75%), and calculate safe absences.
           </p>
+          {!isTeacher && <Link href="/attendance/requests" className="mt-2 inline-flex text-xs font-bold text-violet-600 hover:underline">Request an attendance correction →</Link>}
         </div>
 
         {isTeacher && <button

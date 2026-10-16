@@ -17,6 +17,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Modal } from '@/components/common/Modal';
+import { apiFetch } from '@/lib/api-fetch';
 import { Priority, AssignmentStatus, Assignment } from '@/types';
 
 export default function AssignmentsPage() {
@@ -25,7 +26,11 @@ export default function AssignmentsPage() {
     addAssignment,
     updateAssignment,
     deleteAssignment,
-    toggleAssignmentStatus
+    toggleAssignmentStatus,
+    userRole,
+    isAuthenticated,
+    refreshFromCloud,
+    showToast
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,6 +38,9 @@ export default function AssignmentsPage() {
   const [selectedPriority, setSelectedPriority] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [submissionFiles, setSubmissionFiles] = useState<Record<string, File | null>>({});
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const isTeacher = isAuthenticated && userRole === 'teacher';
 
   // Add / Edit Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -129,6 +137,31 @@ export default function AssignmentsPage() {
     setIsModalOpen(false);
   };
 
+  const submitAssignmentFile = async (assignmentId: string) => {
+    const file = submissionFiles[assignmentId];
+    if (!file) { showToast('Choose your completed assignment file first.'); return; }
+    if (file.size > 20 * 1024 * 1024) { showToast('File size must be 20 MB or less.'); return; }
+    setSubmittingId(assignmentId);
+    try {
+      const form = new FormData();
+      form.set('file', file);
+      const uploadResponse = await apiFetch('/api/assignments/upload', { method: 'POST', body: form });
+      const uploadData = await uploadResponse.json();
+      if (!uploadResponse.ok) throw new Error(uploadData.error || 'Upload failed.');
+      const submitResponse = await apiFetch('/api/assignments', {
+        method: 'PUT',
+        body: JSON.stringify({ id: assignmentId, updated: { submissionPath: uploadData.submissionPath } }),
+      });
+      const submitData = await submitResponse.json();
+      if (!submitResponse.ok) throw new Error(submitData.error || 'Submission failed.');
+      setSubmissionFiles(prev => ({ ...prev, [assignmentId]: null }));
+      showToast('Assignment uploaded and sent to your teacher for review.');
+      await refreshFromCloud();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not submit assignment.');
+    } finally { setSubmittingId(null); }
+  };
+
   const getPriorityBadge = (p: Priority) => {
     switch (p) {
       case 'High':
@@ -164,13 +197,13 @@ export default function AssignmentsPage() {
           </p>
         </div>
 
-        <button
+        {isTeacher && <button
           onClick={openCreateModal}
           className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 transition-all"
         >
           <Plus className="w-4 h-4" />
           <span>New Assignment</span>
-        </button>
+        </button>}
       </div>
 
       {/* Summary KPI Cards */}
@@ -312,6 +345,12 @@ export default function AssignmentsPage() {
                   </p>
                 </div>
 
+                {!isTeacher && <div className="mb-3 space-y-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
+                  <p className="text-xs font-semibold">{(item as any).submissionStatus === 'approved' ? 'Approved by teacher' : (item as any).submissionStatus === 'pending' ? 'Submitted — awaiting teacher approval' : (item as any).submissionStatus === 'rejected' ? 'Rejected — upload a revised file' : 'Upload your completed work'}</p>
+                  {(item as any).submissionUrl && <a href={(item as any).submissionUrl} target="_blank" rel="noreferrer" className="text-xs text-violet-600 underline">View latest submission</a>}
+                  {(item as any).feedback && <p className="text-xs text-slate-500">Teacher feedback: {(item as any).feedback}</p>}
+                  {(item as any).submissionStatus !== 'approved' && <><input type="file" onChange={e=>setSubmissionFiles(prev=>({...prev,[item.id]:e.target.files?.[0] || null}))} className="block w-full text-xs" /><button disabled={submittingId===item.id} onClick={()=>void submitAssignmentFile(item.id)} className="w-full rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{submittingId===item.id?'Uploading…':'Upload & submit for approval'}</button></>}
+                </div>}
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <div className={`flex items-center gap-1 text-xs font-semibold ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
                     {isOverdue ? <AlertTriangle className="w-4 h-4 text-red-500" /> : <Clock className="w-4 h-4 text-amber-500" />}
@@ -319,33 +358,10 @@ export default function AssignmentsPage() {
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => toggleAssignmentStatus(item.id)}
-                      className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors ${
-                        item.status === 'Completed'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                          : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-600 dark:bg-slate-800 dark:text-slate-300'
-                      }`}
-                      title="Toggle completion status"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      onClick={() => openEditModal(item)}
-                      className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                      title="Edit assignment"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      onClick={() => deleteAssignment(item.id)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                      title="Delete assignment"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isTeacher && <>
+                      <button onClick={() => openEditModal(item)} className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" title="Edit assignment"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => deleteAssignment(item.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" title="Delete assignment"><Trash2 className="w-4 h-4" /></button>
+                    </>}
                   </div>
                 </div>
               </div>
@@ -388,24 +404,11 @@ export default function AssignmentsPage() {
                     </td>
                     <td className="p-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => toggleAssignmentStatus(item.id)}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openEditModal(item)}
-                          className="p-1.5 text-slate-400 hover:text-primary rounded-lg"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteAssignment(item.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {isTeacher && <>
+                          <button onClick={() => openEditModal(item)} className="p-1.5 text-slate-400 hover:text-primary rounded-lg" title="Edit assignment"><Edit2 className="w-4 h-4" /></button>
+                          <button onClick={() => deleteAssignment(item.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg" title="Delete assignment"><Trash2 className="w-4 h-4" /></button>
+                        </>}
+                        {!isTeacher && <span className="text-[10px] text-slate-500">Submit work in grid view</span>}
                       </div>
                     </td>
                   </tr>
