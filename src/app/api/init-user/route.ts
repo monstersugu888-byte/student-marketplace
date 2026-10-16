@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase/admin';
+import { getVerifiedRequestUser } from '@/lib/supabase/request-auth';
 import {
   initialProfile,
   initialAssignments,
@@ -16,11 +17,15 @@ const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_');
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const userId = body.userId || 'usr_001';
-    const email = body.email || 'alex.rivera@campus.edu';
-    const name = body.name || 'Alex Rivera';
-    const docId = sanitizeId(email || userId);
+    const user = await getVerifiedRequestUser(req);
+    if (!user || !user.email) {
+      return NextResponse.json({ success: false, error: 'Please sign in again.' }, { status: 401 });
+    }
+    // Never trust client-supplied identity for a server-side profile lookup.
+    const email = user.email;
+    const userId = user.id;
+    const name = String(user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0]);
+    const docId = sanitizeId(email);
 
     if (!db) {
       return NextResponse.json({
