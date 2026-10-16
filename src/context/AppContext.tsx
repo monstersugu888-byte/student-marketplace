@@ -322,7 +322,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       options: {
         data: { full_name: name, major: major || 'Computer Science' },
         // Send confirmation emails to the deployed app, never the local development server.
-        emailRedirectTo: 'https://student-marketplace-opal.vercel.app/auth/callback',
+        emailRedirectTo: 'https://studora-app.vercel.app/auth/callback',
       },
     });
     if (error) return { success: false, message: error.message };
