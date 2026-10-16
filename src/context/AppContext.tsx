@@ -15,16 +15,8 @@ import {
   Priority
 } from '../types';
 import { supabase } from '../lib/supabase/client';
-import {
-  initialProfile,
-  initialAssignments,
-  initialClasses,
-  initialStudySessions,
-  initialStudyMaterials,
-  initialNotifications,
-  initialDailyTasks,
-  initialAttendances
-} from '../data/mockData';
+import { apiFetch } from '../lib/api-fetch';
+import { initialProfile, initialClasses } from '../data/mockData';
 
 interface AppContextType {
   // Auth state
@@ -101,14 +93,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<'student' | 'teacher'>('student');
   const [profile, setProfile] = useState<StudentProfile>(initialProfile);
-  const [attendances, setAttendances] = useState<SubjectAttendance[]>(initialAttendances);
-  const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments);
+  const [attendances, setAttendances] = useState<SubjectAttendance[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [classes] = useState<ClassSchedule[]>(initialClasses);
-  const [studySessions, setStudySessions] = useState<StudySession[]>(initialStudySessions);
-  const [materials, setMaterials] = useState<StudyMaterial[]>(initialStudyMaterials);
+  const [studySessions, setStudySessions] = useState<StudySession[]>([]);
+  const [materials, setMaterials] = useState<StudyMaterial[]>([]);
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
-  const [dailyTasks, setDailyTasks] = useState<DailyTask[]>(initialDailyTasks);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [dailyTasks, setDailyTasks] = useState<DailyTask[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
@@ -121,14 +113,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 3500);
   };
 
-  // Sync / Initialize User in Cloud Firestore
+  // Sync / Initialize authenticated user data in Supabase
   const syncUserFromCloud = useCallback(async (userEmail?: string, userName?: string) => {
     try {
       setIsCloudSyncing(true);
-      const activeEmail = userEmail || profile.email || 'alex.rivera@campus.edu';
-      const activeName = userName || profile.name || 'Alex Rivera';
+      const activeEmail = userEmail || 'student@example.com';
+      const activeName = userName || 'Student';
 
-      const res = await fetch('/api/init-user', {
+      const res = await apiFetch('/api/init-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,19 +150,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsCloudSyncing(false);
     }
-  }, [profile.email, profile.name]);
+  }, []);
 
   // Restore Supabase authentication and load marketplace listings.
   useEffect(() => {
     let active = true;
+    let activeUserId: string | null = null;
+    const clearPrivateState = () => {
+      setIsAuthenticated(false);
+      setUserRole('student');
+      setProfile(initialProfile);
+      setAssignments([]);
+      setAttendances([]);
+      setStudySessions([]);
+      setMaterials([]);
+      setNotifications([]);
+      setDailyTasks([]);
+      setListings([]);
+      // Remove legacy per-user caches created by older versions. They are not
+      // a source of truth and must not survive account switches on this device.
+      ['cm_assignments', 'cm_attendances', 'cm_materials', 'cm_listings', 'cm_profile', 'cm_tasks', 'cm_sessions']
+        .forEach(key => localStorage.removeItem(key));
+    };
     const load = async () => {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (!active) return;
       if (sessionError) console.error('Supabase session error:', sessionError.message);
       const user = sessionData.session?.user;
+      activeUserId = user?.id || null;
+      if (!user) clearPrivateState();
       setIsAuthenticated(Boolean(user));
-      setUserRole(user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
-      setUserRole(user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
+      setUserRole('student');
+      if (user) {
+        try {
+          const roleResponse = await apiFetch('/api/profile', { cache: 'no-store' });
+          const roleData = await roleResponse.json();
+          if (active && roleResponse.ok) setUserRole(roleData.profile?.role === 'teacher' && roleData.profile?.teacherAccessStatus === 'approved' ? 'teacher' : 'student');
+        } catch { /* Keep least-privilege student role if profile lookup fails. */ }
+        await syncUserFromCloud(user.email || undefined, String(user.user_metadata?.full_name || user.email?.split('@')[0] || 'Student'));
+      }
       if (user) {
         setProfile(prev => ({
           ...prev,
@@ -179,33 +197,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           major: String(user.user_metadata?.major || prev.major),
         }));
       }
-      const { data, error } = await supabase.from('marketplace_listings').select('*').order('created_at', { ascending: false });
-      if (!active) return;
-      if (error) {
-        console.error('Supabase listings load error:', error.message);
-      } else if (data) {
-        setListings(data.map((row: any) => ({
-          id: row.id,
-          title: row.title,
-          description: row.description || '',
-          price: Number(row.price),
-          category: row.category,
-          condition: row.item_condition,
-          status: row.status === 'active' ? 'Available' : row.status === 'reserved' ? 'Reserved' : 'Sold',
-          imageUrl: row.image_url || '',
-          postedDate: new Date(row.created_at).toLocaleDateString(),
-          sellerName: row.seller_name || 'Student seller',
-          sellerAvatar: row.seller_avatar || '',
-          sellerContact: row.seller_contact || '',
-          location: row.location || '',
-          isOwner: row.seller_id === user?.id,
-        })));
+      if (user) {
+        try {
+          const listingsResponse = await apiFetch('/api/marketplace', { cache: 'no-store' });
+          const listingsData = await listingsResponse.json();
+          if (!active) return;
+          if (!listingsResponse.ok) throw new Error(listingsData.error || 'Unable to load marketplace listings.');
+          setListings((listingsData.listings || []).map((row: any) => ({
+            id: row.id, title: row.title, description: row.description || '', price: Number(row.price || 0),
+            category: row.category, condition: row.condition || 'Good', status: row.status || 'Available',
+            imageUrl: row.imageUrl || '', postedDate: row.postedDate || '',
+            sellerName: row.sellerName || 'Student seller', sellerAvatar: '',
+            sellerContact: row.sellerContact || '', location: row.location || '', isOwner: Boolean(row.isOwner),
+          })));
+        } catch (error) {
+          console.error('Marketplace API load error:', error);
+        }
       }
     };
     load();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUserId = session?.user?.id || null;
+      if (nextUserId !== activeUserId) {
+        activeUserId = nextUserId;
+        clearPrivateState();
+      }
       setIsAuthenticated(Boolean(session));
-      setUserRole(session?.user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
+      setUserRole('student');
+      if (session?.user) {
+        void apiFetch('/api/profile', { cache: 'no-store' }).then(async response => {
+          const data = await response.json();
+          setUserRole(response.ok && data.profile?.role === 'teacher' && data.profile?.teacherAccessStatus === 'approved' ? 'teacher' : 'student');
+        }).catch(() => setUserRole('student'));
+      }
     });
     const savedTheme = localStorage.getItem('cm_theme') as 'light' | 'dark' | null;
     if (savedTheme) {
@@ -216,20 +240,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       active = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
-
-  // Save to LocalStorage cache
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cm_assignments', JSON.stringify(assignments));
-      localStorage.setItem('cm_attendances', JSON.stringify(attendances));
-      localStorage.setItem('cm_materials', JSON.stringify(materials));
-      localStorage.setItem('cm_listings', JSON.stringify(listings));
-      localStorage.setItem('cm_profile', JSON.stringify(profile));
-      localStorage.setItem('cm_tasks', JSON.stringify(dailyTasks));
-      localStorage.setItem('cm_sessions', JSON.stringify(studySessions));
-    }
-  }, [assignments, attendances, materials, listings, profile, dailyTasks, studySessions]);
+  }, [syncUserFromCloud]);
 
   const refreshFromCloud = async () => {
     setIsCloudSyncing(true);
@@ -267,39 +278,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isOwner: row.seller_id === user?.id,
       })));
       setLastSyncedAt(new Date());
+      showToast('Synced profile and marketplace with Supabase.');
     } catch (error) {
-      // Background synchronization is intentionally silent; log failures for debugging.
-      console.error('Background Supabase sync failed:', error);
+      showToast(error instanceof Error ? error.message : 'Supabase sync failed.');
     } finally {
       setIsCloudSyncing(false);
     }
   };
-
-  // Keep cloud data fresh without exposing a manual Sync button.
-  // Refresh on app startup, when the browser tab becomes active, and periodically.
-  useEffect(() => {
-    let running = false;
-    const syncInBackground = async () => {
-      if (running || document.visibilityState !== 'visible') return;
-      running = true;
-      try {
-        await refreshFromCloud();
-      } finally {
-        running = false;
-      }
-    };
-
-    void syncInBackground();
-    window.addEventListener('focus', syncInBackground);
-    document.addEventListener('visibilitychange', syncInBackground);
-    const intervalId = window.setInterval(syncInBackground, 60_000);
-
-    return () => {
-      window.removeEventListener('focus', syncInBackground);
-      document.removeEventListener('visibilitychange', syncInBackground);
-      window.clearInterval(intervalId);
-    };
-  }, []);
 
   const login = async (email: string, pass: string, name?: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
@@ -308,9 +293,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     setIsAuthenticated(true);
-    const { data: sessionData } = await supabase.auth.getUser();
-    setUserRole(sessionData.user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
+    setUserRole('student');
+    try {
+      const roleResponse = await apiFetch('/api/profile', { cache: 'no-store' });
+      const roleData = await roleResponse.json();
+      setUserRole(roleResponse.ok && roleData.profile?.role === 'teacher' && roleData.profile?.teacherAccessStatus === 'approved' ? 'teacher' : 'student');
+    } catch { setUserRole('student'); }
     setProfile(prev => ({ ...prev, email, name: name || email.split('@')[0] }));
+    await syncUserFromCloud(email, name || email.split('@')[0]);
     showToast('Signed in successfully');
     return true;
   };
@@ -322,7 +312,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       options: {
         data: { full_name: name, major: major || 'Computer Science' },
         // Send confirmation emails to the deployed app, never the local development server.
-        emailRedirectTo: 'https://studora-app.vercel.app/auth/callback',
+        emailRedirectTo: 'https://student-marketplace-opal.vercel.app/auth/callback',
       },
     });
     if (error) return { success: false, message: error.message };
@@ -330,6 +320,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsAuthenticated(true);
     setUserRole('student');
     setProfile(prev => ({ ...prev, email, name, major: major || 'Computer Science' }));
+    await syncUserFromCloud(email, name);
     return { success: true, message: 'Account created successfully.' };
   };
 
@@ -342,20 +333,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateProfile = async (updated: Partial<StudentProfile>) => {
-    const newProfile = { ...profile, ...updated };
-    setProfile(newProfile);
-    localStorage.setItem('cm_profile', JSON.stringify(newProfile));
+    const newProfile = { ...profile, ...updated, avatar: '' };
     const { data: authData } = await supabase.auth.getUser();
-    if (authData.user) {
-      const { error: metadataError } = await supabase.auth.updateUser({
-        data: { full_name: newProfile.name, major: newProfile.major, college: newProfile.college, semester: newProfile.semester, student_id: newProfile.studentId, avatar: newProfile.avatar, bio: newProfile.bio },
+    if (!authData.user) { showToast('Please sign in before updating your profile.'); return; }
+    try {
+      const response = await apiFetch('/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify({ updatedProfile: { ...updated, avatar: undefined } }),
       });
-      if (metadataError) showToast('Profile saved locally; cloud profile update failed: ' + metadataError.message);
-      else showToast('Profile updated successfully');
-    } else {
-      showToast('Profile updated on this device');
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Profile update failed.');
+      setProfile({ ...newProfile, ...(result.profile || {}), avatar: '' });
+      await supabase.auth.updateUser({ data: { full_name: newProfile.name, major: newProfile.major } });
+      showToast('Profile updated successfully.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Profile update failed.');
     }
-
   };
 
   // Attendance Handlers with Cloud Firestore
@@ -365,56 +358,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     dateStr?: string,
     note?: string
   ) => {
-    const todayStr = dateStr || new Date().toISOString().split('T')[0];
-
-    setAttendances(prev => prev.map(item => {
-      if (item.id === subjectId) {
-        const newHistoryItem = { id: 'h_' + Date.now(), date: todayStr, status, note };
-        let newAttended = item.attendedClasses;
-        let newTotal = item.totalClasses;
-
-        if (status === 'Present') {
-          newAttended += 1;
-          newTotal += 1;
-        } else if (status === 'Absent') {
-          newTotal += 1;
-        }
-
-        const pct = Math.round((newAttended / (newTotal || 1)) * 100);
-        showToast(
-          status === 'Present'
-            ? `Marked Present in ${item.subject} (${pct}%) ☁️`
-            : status === 'Absent'
-            ? `Marked Absent in ${item.subject} (${pct}%) ☁️`
-            : `Class Cancelled for ${item.subject} ☁️`
-        );
-
-        return {
-          ...item,
-          attendedClasses: newAttended,
-          totalClasses: newTotal,
-          history: [newHistoryItem, ...item.history],
-        };
-      }
-      return item;
-    }));
-
+    if (userRole !== 'teacher') {
+      showToast('Only approved teachers can record attendance.');
+      return;
+    }
+    if (status === 'Cancelled') {
+      showToast('Cancelled classes do not change attendance totals.');
+      return;
+    }
+    const date = dateStr || new Date().toISOString().slice(0, 10);
     try {
-      const { data: authData } = await supabase.auth.getSession();
-      await fetch('/api/attendance', {
+      const response = await apiFetch('/api/attendance', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}) },
-        body: JSON.stringify({
-          userId: profile.email,
-          id: subjectId,
-          action: 'mark',
-          status,
-          date: todayStr,
-          note,
-        }),
+        body: JSON.stringify({ userId: profile.email, id: subjectId, action: 'mark', status, date, note }),
       });
-    } catch (e) {
-      console.error('Cloud markAttendance error:', e);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Attendance was not saved.');
+      setAttendances(prev => prev.map(item => item.id === subjectId ? {
+        ...item,
+        attendedClasses: Number(result.updated?.attendedClasses ?? item.attendedClasses),
+        totalClasses: Number(result.updated?.totalClasses ?? item.totalClasses),
+        history: Array.isArray(result.updated?.history) ? result.updated.history : item.history,
+      } : item));
+      const saved = result.updated;
+      const percentage = saved?.totalClasses ? Math.round((saved.attendedClasses / saved.totalClasses) * 100) : 0;
+      showToast(`Marked ${status} in ${attendances.find(item => item.id === subjectId)?.subject || 'subject'} (${percentage}%).`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Attendance was not saved.');
     }
   };
 
@@ -427,31 +397,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     target: number = 75
   ) => {
     if (userRole !== 'teacher') { showToast('Only approved teachers can create attendance subjects.'); return; }
+    if (!subject.trim() || !code.trim() || attended < 0 || total < attended) {
+      showToast('Enter a subject, code, and valid attendance totals.');
+      return;
+    }
     const newSub: SubjectAttendance = {
       id: 'att_' + Date.now(),
-      subject,
-      code,
-      instructor,
+      subject: subject.trim(),
+      code: code.trim(),
+      instructor: instructor.trim() || 'Teacher',
       attendedClasses: attended,
       totalClasses: total,
-      targetPercentage: target,
+      targetPercentage: Math.min(100, Math.max(1, target || 75)),
       history: [],
     };
-    setAttendances(prev => [...prev, newSub]);
-    showToast(`Added ${subject} to Attendance Tracker ☁️`);
-
     try {
-      const { data: authData } = await supabase.auth.getSession();
-      await fetch('/api/attendance', {
+      const response = await apiFetch('/api/attendance', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}) },
-        body: JSON.stringify({
-          userId: profile.email,
-          subject: newSub,
-        }),
+        body: JSON.stringify({ subject: newSub }),
       });
-    } catch (e) {
-      console.error('Cloud addSubjectAttendance error:', e);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Attendance subject could not be saved.');
+      const saved = result.subject || newSub;
+      setAttendances(prev => [...prev.filter(item => item.id !== saved.id), saved]);
+      showToast(`Added ${subject} to attendance subjects.`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Attendance subject could not be saved.');
     }
   };
 
@@ -462,51 +433,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     target?: number
   ) => {
     if (userRole !== 'teacher') { showToast('Only approved teachers can edit attendance.'); return; }
-    setAttendances(prev => prev.map(a => {
-      if (a.id === id) {
-        return {
-          ...a,
-          attendedClasses: attended,
-          totalClasses: total,
-          targetPercentage: target ?? a.targetPercentage,
-        };
-      }
-      return a;
-    }));
-    showToast('Attendance counts updated ☁️');
-
+    if (!Number.isFinite(attended) || !Number.isFinite(total) || attended < 0 || total < attended) {
+      showToast('Attendance totals are invalid.');
+      return;
+    }
     try {
-      await fetch('/api/attendance', {
+      const response = await apiFetch('/api/attendance', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: profile.email,
           id,
-          updated: {
-            attendedClasses: attended,
-            totalClasses: total,
-            targetPercentage: target,
-          },
+          updated: { attendedClasses: attended, totalClasses: total, targetPercentage: target },
         }),
       });
-    } catch (e) {
-      console.error('Cloud updateSubjectAttendance error:', e);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Attendance could not be updated.');
+      setAttendances(prev => prev.map(item => item.id === id ? {
+        ...item, attendedClasses: attended, totalClasses: total,
+        targetPercentage: target ?? item.targetPercentage,
+      } : item));
+      showToast('Attendance counts saved.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Attendance could not be updated.');
     }
   };
 
   const deleteSubjectAttendance = async (id: string) => {
     if (userRole !== 'teacher') { showToast('Only approved teachers can delete attendance subjects.'); return; }
-    setAttendances(prev => prev.filter(a => a.id !== id));
-    showToast('Subject removed from Attendance Tracker ☁️');
-
     try {
-      const { data: authData } = await supabase.auth.getSession();
-      await fetch(`/api/attendance?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-        headers: authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {},
-      });
-    } catch (e) {
-      console.error('Cloud deleteSubjectAttendance error:', e);
+      const response = await apiFetch(`/api/attendance?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Attendance subject could not be deleted.');
+      setAttendances(prev => prev.filter(item => item.id !== id));
+      showToast('Attendance subject deleted.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Attendance subject could not be deleted.');
     }
   };
 
@@ -522,7 +483,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Assignment "${asg.title}" created & saved to Cloud ☁️`);
 
     try {
-      await fetch('/api/assignments', {
+      const response = await apiFetch('/api/assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -530,70 +491,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           assignment: newAsg,
         }),
       });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Assignment could not be saved.');
     } catch (e) {
-      console.error('Cloud addAssignment error:', e);
+      setAssignments(prev => prev.filter(item => item.id !== newAsg.id));
+      showToast(e instanceof Error ? e.message : 'Assignment could not be saved.');
     }
   };
 
   const updateAssignment = async (id: string, updated: Partial<Assignment>) => {
-    setAssignments(prev => prev.map(a => a.id === id ? { ...a, ...updated } : a));
-    showToast('Assignment updated ☁️');
-
     try {
-      await fetch('/api/assignments', {
+      const response = await apiFetch('/api/assignments', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.email,
-          id,
-          updated,
-        }),
+        body: JSON.stringify({ id, updated }),
       });
-    } catch (e) {
-      console.error('Cloud updateAssignment error:', e);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Assignment could not be updated.');
+      setAssignments(prev => prev.map(item => item.id === id ? { ...item, ...updated } : item));
+      showToast('Assignment changes saved.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Assignment could not be updated.');
     }
   };
 
   const deleteAssignment = async (id: string) => {
-    setAssignments(prev => prev.filter(a => a.id !== id));
-    showToast('Assignment deleted ☁️');
-
     try {
-      await fetch(`/api/assignments?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      });
-    } catch (e) {
-      console.error('Cloud deleteAssignment error:', e);
+      const response = await apiFetch(`/api/assignments?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Assignment could not be deleted.');
+      setAssignments(prev => prev.filter(item => item.id !== id));
+      showToast('Assignment deleted.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Assignment could not be deleted.');
     }
   };
 
   const toggleAssignmentStatus = async (id: string) => {
-    let nextStatus: AssignmentStatus = 'Completed';
-    setAssignments(prev => prev.map(a => {
-      if (a.id === id) {
-        nextStatus = a.status === 'Completed' ? 'In Progress' : 'Completed';
-        showToast(
-          nextStatus === 'Completed'
-            ? `🎉 Marked "${a.title}" as completed! ☁️`
-            : `Updated "${a.title}" status ☁️`
-        );
-        return { ...a, status: nextStatus };
-      }
-      return a;
-    }));
-
+    const assignment = assignments.find(item => item.id === id);
+    if (!assignment) return;
+    const nextStatus: AssignmentStatus = assignment.status === 'Completed' ? 'In Progress' : 'Completed';
     try {
-      await fetch('/api/assignments', {
+      const response = await apiFetch('/api/assignments', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.email,
-          id,
-          updated: { status: nextStatus },
-        }),
+        body: JSON.stringify({ id, updated: { status: nextStatus } }),
       });
-    } catch (e) {
-      console.error('Cloud toggleAssignmentStatus error:', e);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Assignment status could not be saved.');
+      setAssignments(prev => prev.map(item => item.id === id ? { ...item, status: nextStatus } : item));
+      showToast(nextStatus === 'Completed' ? `Marked "${assignment.title}" complete.` : `Reopened "${assignment.title}".`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Assignment status could not be saved.');
     }
   };
 
@@ -607,7 +554,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Study session "${session.title}" scheduled & saved to Cloud ☁️`);
 
     try {
-      await fetch('/api/sessions', {
+      await apiFetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -625,7 +572,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Study session removed ☁️');
 
     try {
-      await fetch(`/api/sessions?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/sessions?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
     } catch (e) {
@@ -646,7 +593,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     try {
-      await fetch('/api/materials', {
+      await apiFetch('/api/materials', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -666,11 +613,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...mat,
       id: 'mat_' + Date.now(),
       uploadDate: new Date().toISOString().split('T')[0],
-      downloadsCount: 1,
+      downloadsCount: 0,
       bookmarked: false,
     };
     const { data: authData } = await supabase.auth.getSession();
-    const response = await fetch('/api/materials', {
+    const response = await apiFetch('/api/materials', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}) },
       body: JSON.stringify({ userId: profile.email, material: newMat }),
@@ -765,7 +712,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Task added ☁️');
 
     try {
-      await fetch('/api/tasks', {
+      await apiFetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -789,7 +736,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     try {
-      await fetch('/api/tasks', {
+      await apiFetch('/api/tasks', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -807,7 +754,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDailyTasks(prev => prev.filter(t => t.id !== id));
 
     try {
-      await fetch(`/api/tasks?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/tasks?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
     } catch (e) {
@@ -820,7 +767,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
 
     try {
-      await fetch('/api/notifications', {
+      await apiFetch('/api/notifications', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -838,7 +785,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('All notifications marked as read ☁️');
 
     try {
-      await fetch('/api/notifications', {
+      await apiFetch('/api/notifications', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

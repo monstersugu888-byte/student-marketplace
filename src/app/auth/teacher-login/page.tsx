@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { apiFetch } from '@/lib/api-fetch';
 import { GraduationCap, Mail, Lock, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react';
 
 export default function TeacherLoginPage() {
@@ -26,9 +27,11 @@ export default function TeacherLoginPage() {
         setError(signInError?.message || 'Unable to sign in. Check your email and password.');
         return;
       }
-      if (data.user.app_metadata?.role !== 'teacher') {
+      const profileResponse = await apiFetch('/api/profile', { cache: 'no-store' });
+      const profileData = await profileResponse.json();
+      if (!profileResponse.ok || profileData.profile?.role !== 'teacher' || profileData.profile?.teacherAccessStatus !== 'approved') {
         await supabase.auth.signOut({ scope: 'local' });
-        setError('This teacher application is still pending or was rejected. The CampusMate administrator must approve it using the approval email before teacher access is enabled.');
+        setError(profileData.error || 'Your teacher application is pending approval. You can sign in after an administrator approves it.');
         return;
       }
       router.replace('/teacher');

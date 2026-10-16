@@ -1,0 +1,29 @@
+name: CampusMate CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, fix/supabase-only-backend]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Deliberately omit SUPABASE_SERVICE_ROLE_KEY here: a clean build must not
+    # require a production secret. API routes validate it only at runtime.
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build Next.js app
+        run: npm run build

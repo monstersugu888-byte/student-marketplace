@@ -20,6 +20,7 @@ import {
 import { Modal } from '@/components/common/Modal';
 import { StudyMaterial } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { apiFetch } from '@/lib/api-fetch';
 
 export default function StudyMaterialsPage() {
   const router = useRouter();
@@ -100,11 +101,15 @@ export default function StudyMaterialsPage() {
       if (selectedFile) {
         const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         storagePath = `${Date.now()}-${safeName}`;
-        const { error: uploadError } = await supabase.storage.from('study-materials').upload(storagePath, selectedFile, { cacheControl: '3600', upsert: false, contentType: selectedFile.type || undefined });
-        if (uploadError) throw uploadError;
-        // Bucket stays private. Create a temporary signed URL when the user opens the material.
+        const form = new FormData();
+        form.set('file', selectedFile);
+        const uploadResponse = await apiFetch('/api/materials/upload', { method: 'POST', body: form });
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok) throw new Error(uploadResult.error || 'File upload failed.');
+        storagePath = uploadResult.storagePath;
+        // The API creates short-lived signed URLs when materials are listed.
         downloadUrl = '';
-        fileSize = `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`;
+        fileSize = uploadResult.fileSize || `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`;
       }
       await addMaterial({ title: title.trim(), subject: subject.trim(), courseCode: courseCode.trim(), semester, type, fileSize, uploadedBy: profile.name || profile.email, downloadUrl, storagePath, content: noteText.trim(), imageUrl: '' });
       setTitle(''); setSubject(''); setCourseCode(''); setLinkUrl(''); setNoteText(''); setSelectedFile(null); setIsUploadOpen(false);
