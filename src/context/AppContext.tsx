@@ -128,9 +128,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const activeEmail = userEmail || profile.email || 'alex.rivera@campus.edu';
       const activeName = userName || profile.name || 'Alex Rivera';
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return;
+
       const res = await fetch('/api/init-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
           userId: activeEmail,
           email: activeEmail,
