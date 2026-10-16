@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { GraduationCap, Mail, Lock, ArrowRight, UserPlus } from 'lucide-react';
+import { GraduationCap, Mail, Lock, ArrowRight, UserPlus, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -108,13 +108,17 @@ export default function LoginPage() {
         </p>
         <div className="border-t border-white/15 pt-4 text-center">
           <p className="mb-3 text-xs text-purple-200">Are you a teacher?</p>
-          <div className="flex justify-center">
-            <Link href="/auth/teacher-register" className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-300/40 bg-white/10 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-purple-300/50">
+          <div className="flex flex-col justify-center gap-2 sm:flex-row">
+            <Link href="/auth/teacher-login" className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-300/40 bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-purple-300/50">
+              <ShieldCheck className="h-4 w-4" />
+              Teacher Login
+            </Link>
+            <Link href="/auth/teacher-register" className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-300/40 bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-purple-300/50">
               <UserPlus className="h-4 w-4" />
               Teacher Register
             </Link>
           </div>
-          <p className="mt-2 text-[11px] text-purple-200/80">Teachers sign in using the same form above after administrator approval.</p>
+          <p className="mt-2 text-[11px] text-purple-200/80">Teacher access requires administrator approval.</p>
         </div>
       </div>
     </div>
