@@ -300,15 +300,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const login = async (email: string, pass: string, name?: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (error) {
-      showToast(error.message);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error || !data.user) {
+      showToast(error?.message || 'Sign-in failed. Please try again.');
       return false;
     }
+
+    // Use the user returned by signInWithPassword immediately. Avoid a second
+    // auth request and do not wait for background database sync to show the name.
+    const user = data.user;
+    const metadata = user.user_metadata || {};
+    const displayName = String(metadata.full_name || metadata.name || name || user.email?.split('@')[0] || 'Student');
     setIsAuthenticated(true);
-    const { data: sessionData } = await supabase.auth.getUser();
-    setUserRole(sessionData.user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
-    setProfile(prev => ({ ...prev, email, name: name || email.split('@')[0] }));
+    setUserRole(user.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
+    setProfile(prev => ({
+      ...prev,
+      email: user.email || email,
+      name: displayName,
+      major: String(metadata.major || prev.major),
+      college: String(metadata.college || prev.college),
+      semester: String(metadata.semester || prev.semester),
+      studentId: String(metadata.student_id || prev.studentId),
+      avatar: String(metadata.avatar || prev.avatar),
+      bio: String(metadata.bio || prev.bio),
+    }));
     showToast('Signed in successfully');
     return true;
   };
