@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import LayoutShell from '@/components/layout/LayoutShell';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: 'CampusMate - Student Productivity Portal',
@@ -27,6 +28,7 @@ export default function RootLayout({
         <AppProvider>
           <LayoutShell>{children}</LayoutShell>
         </AppProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
