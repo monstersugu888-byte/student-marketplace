@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
-import { GraduationCap, User, Mail, Lock, BookOpen, ArrowRight, ArrowLeft } from 'lucide-react';
+import { GraduationCap, User, Mail, Lock, BookOpen, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
 
 export default function TeacherRegisterPage() {
   const [name, setName] = useState('');
@@ -54,23 +54,23 @@ export default function TeacherRegisterPage() {
   }
 
   return (
-    <main className="flex min-h-[75vh] items-center justify-center p-4">
-      <div className="w-full max-w-lg space-y-6 rounded-3xl border border-slate-200 bg-white p-7 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-tr from-slate-950 via-indigo-950 to-purple-950 p-4 text-white">
+      <div className="my-4 w-full max-w-lg space-y-6 rounded-3xl border border-white/20 bg-white/10 p-7 shadow-2xl shadow-purple-950/40 backdrop-blur-xl sm:p-8">
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/30">
             <GraduationCap className="h-9 w-9" />
           </div>
-          <p className="text-sm font-semibold text-violet-600">CampusMate</p>
+          <p className="text-sm font-semibold text-purple-200">CampusMate</p>
           <h1 className="mt-1 text-2xl font-extrabold">Teacher Registration</h1>
-          <p className="mt-2 text-sm text-slate-500">Apply for teacher access using your college details.</p>
+          <p className="mt-2 text-sm text-purple-100/80">Apply for teacher access using your college details.</p>
         </div>
 
-        {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-        {success && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{success}</div>}
+        {error && <div role="alert" className="rounded-xl border border-red-400/40 bg-red-500/15 p-3 text-sm text-red-100">{error}</div>}
+        {success && <div role="status" className="rounded-xl border border-emerald-300/30 bg-emerald-400/10 p-3 text-sm text-emerald-100">{success}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block text-sm font-semibold">Full name
-            <span className="relative mt-1 block"><User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required maxLength={120} value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Your full name" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
+          <label className="block text-xs font-bold text-purple-100">Full name
+            <span className="relative mt-1 block"><User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-300" /><input required maxLength={120} value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Your full name" className="w-full rounded-xl border border-white/20 bg-white/10 py-3 pl-10 pr-4 text-sm font-normal text-white placeholder:text-purple-200/50 outline-none transition focus:border-purple-300 focus:ring-2 focus:ring-purple-400/30" /></span>
           </label>
           <label className="block text-sm font-semibold">College / staff email
             <span className="relative mt-1 block"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required type="email" maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="teacher@college.edu" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
@@ -79,17 +79,17 @@ export default function TeacherRegisterPage() {
             <span className="relative mt-1 block"><BookOpen className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required maxLength={120} value={department} onChange={e=>setDepartment(e.target.value)} placeholder="e.g. Electronics Engineering" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
           </label>
           <label className="block text-sm font-semibold">Staff ID (if available)
-            <input maxLength={80} value={staffId} onChange={e=>setStaffId(e.target.value)} placeholder="College staff ID" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" />
+            <input maxLength={80} value={staffId} onChange={e=>setStaffId(e.target.value)} placeholder="College staff ID" className="mt-1.5 w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-normal text-white placeholder:text-purple-200/50 outline-none transition focus:border-purple-300 focus:ring-2 focus:ring-purple-400/30" />
           </label>
           <label className="block text-sm font-semibold">Create password
             <span className="relative mt-1 block"><Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required type="password" minLength={8} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} autoComplete="new-password" placeholder="At least 8 characters" className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 font-normal text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700" /></span>
           </label>
-          <div className="rounded-xl bg-violet-50 p-3 text-sm text-violet-900 dark:bg-violet-950/40 dark:text-violet-200">Your application is reviewed by the CampusMate administrator. You cannot access teacher features until approved.</div>
-          <button type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 p-3 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{busy ? 'Submitting…' : 'Submit teacher registration'} {!busy && <ArrowRight className="h-4 w-4" />}</button>
+          <div className="rounded-xl border border-purple-300/20 bg-purple-400/10 p-3 text-xs leading-relaxed text-purple-100">🔒 Your application is reviewed by the CampusMate administrator. You cannot access teacher features until approved.</div>
+          <button type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 p-3 font-bold text-white shadow-lg shadow-purple-600/30 transition hover:from-purple-500 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">{busy ? 'Submitting…' : 'Submit teacher registration'} {!busy && <ArrowRight className="h-4 w-4" />}</button>
         </form>
         <div className="flex flex-col items-center gap-3 text-sm">
-          <Link href="/auth/teacher-login" className="font-semibold text-violet-600 hover:underline">Already registered? Teacher login</Link>
-          <Link href="/auth/login" className="inline-flex items-center gap-2 text-slate-500 hover:underline"><ArrowLeft className="h-4 w-4" /> Back to student login</Link>
+          <Link href="/auth/teacher-login" className="font-semibold text-purple-200 hover:text-white hover:underline">Already registered? Teacher login</Link>
+          <Link href="/auth/login" className="inline-flex items-center gap-2 text-purple-200 hover:text-white hover:underline"><ArrowLeft className="h-4 w-4" /> Back to student login</Link>
         </div>
       </div>
     </main>
