@@ -217,18 +217,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Save to LocalStorage cache
+  // Cache only non-sensitive UI data. Profile data belongs to the signed-in
+  // Supabase account and must never be persisted in shared browser localStorage.
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cm_assignments', JSON.stringify(assignments));
-      localStorage.setItem('cm_attendances', JSON.stringify(attendances));
-      localStorage.setItem('cm_materials', JSON.stringify(materials));
-      localStorage.setItem('cm_listings', JSON.stringify(listings));
-      localStorage.setItem('cm_profile', JSON.stringify(profile));
-      localStorage.setItem('cm_tasks', JSON.stringify(dailyTasks));
-      localStorage.setItem('cm_sessions', JSON.stringify(studySessions));
-    }
-  }, [assignments, attendances, materials, listings, profile, dailyTasks, studySessions]);
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('cm_assignments', JSON.stringify(assignments));
+    localStorage.setItem('cm_attendances', JSON.stringify(attendances));
+    localStorage.setItem('cm_materials', JSON.stringify(materials));
+    localStorage.setItem('cm_listings', JSON.stringify(listings));
+    localStorage.setItem('cm_tasks', JSON.stringify(dailyTasks));
+    localStorage.setItem('cm_sessions', JSON.stringify(studySessions));
+  }, [assignments, attendances, materials, listings, dailyTasks, studySessions]);
 
   const refreshFromCloud = async () => {
     setIsCloudSyncing(true);
