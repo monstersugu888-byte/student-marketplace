@@ -510,21 +510,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Attendance counts updated ☁️');
 
     try {
-      await fetch('/api/attendance', {
+      const { data: authData } = await supabase.auth.getSession();
+      const accessToken = authData.session?.access_token;
+      if (!accessToken) throw new Error('Please sign in again.');
+      const response = await fetch('/api/attendance', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
           userId: profile.email,
           id,
           updated: {
             attendedClasses: attended,
             totalClasses: total,
-            targetPercentage: target,
+            ...(target !== undefined ? { targetPercentage: target } : {}),
           },
         }),
       });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Attendance update failed.');
     } catch (e) {
       console.error('Cloud updateSubjectAttendance error:', e);
+      showToast(e instanceof Error ? e.message : 'Could not save attendance. Please try again.');
     }
   };
 
