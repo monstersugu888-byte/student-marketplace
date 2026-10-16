@@ -341,20 +341,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateProfile = async (updated: Partial<StudentProfile>) => {
-    const newProfile = { ...profile, ...updated };
-    setProfile(newProfile);
-    localStorage.setItem('cm_profile', JSON.stringify(newProfile));
-    const { data: authData } = await supabase.auth.getUser();
-    if (authData.user) {
-      const { error: metadataError } = await supabase.auth.updateUser({
-        data: { full_name: newProfile.name, major: newProfile.major, college: newProfile.college, semester: newProfile.semester, student_id: newProfile.studentId, avatar: newProfile.avatar, bio: newProfile.bio },
-      });
-      if (metadataError) showToast('Profile saved locally; cloud profile update failed: ' + metadataError.message);
-      else showToast('Profile updated successfully');
-    } else {
-      showToast('Profile updated on this device');
+    // Keep profile data scoped to the signed-in Supabase user. Do not write it
+    // to shared browser localStorage, where another account on this device could see it.
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      showToast('Please sign in again before updating your profile.');
+      return;
     }
 
+    const newProfile = { ...profile, ...updated };
+    const { error: metadataError } = await supabase.auth.updateUser({
+      data: {
+        full_name: newProfile.name,
+        major: newProfile.major,
+        college: newProfile.college,
+        semester: newProfile.semester,
+        student_id: newProfile.studentId,
+        avatar: newProfile.avatar,
+        bio: newProfile.bio,
+      },
+    });
+
+    if (metadataError) {
+      showToast('Profile update failed: ' + metadataError.message);
+      return;
+    }
+
+    setProfile(newProfile);
+    showToast('Profile updated successfully');
   };
 
   // Attendance Handlers with Cloud Firestore
