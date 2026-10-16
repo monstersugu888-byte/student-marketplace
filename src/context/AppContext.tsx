@@ -534,16 +534,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Assignment "${asg.title}" created & saved to Cloud ☁️`);
 
     try {
-      await fetch('/api/assignments', {
+      const { data: authData } = await supabase.auth.getSession();
+      if (!authData.session?.access_token) throw new Error('Please sign in again.');
+      const response = await fetch('/api/assignments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.email,
-          assignment: newAsg,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authData.session.access_token}` },
+        body: JSON.stringify({ userId: profile.email, assignment: newAsg }),
       });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Unable to save assignment.');
+      setAssignments(prev => [newAsg, ...prev.filter(a => a.id !== newAsg.id)]);
+      showToast(`Assignment "${asg.title}" saved successfully.`);
     } catch (e) {
-      console.error('Cloud addAssignment error:', e);
+      setAssignments(prev => prev.filter(a => a.id !== newAsg.id));
+      showToast(e instanceof Error ? e.message : 'Assignment save failed.');
     }
   };
 
@@ -552,17 +556,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Assignment updated ☁️');
 
     try {
-      await fetch('/api/assignments', {
+      const { data: authData } = await supabase.auth.getSession();
+      if (!authData.session?.access_token) throw new Error('Please sign in again.');
+      const response = await fetch('/api/assignments', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.email,
-          id,
-          updated,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authData.session.access_token}` },
+        body: JSON.stringify({ userId: profile.email, id, updated }),
       });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Unable to update assignment.');
+      showToast('Assignment saved successfully.');
     } catch (e) {
-      console.error('Cloud updateAssignment error:', e);
+      showToast(e instanceof Error ? e.message : 'Assignment update failed.');
     }
   };
 
@@ -571,11 +576,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Assignment deleted ☁️');
 
     try {
-      await fetch(`/api/assignments?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
+      const { data: authData } = await supabase.auth.getSession();
+      if (!authData.session?.access_token) throw new Error('Please sign in again.');
+      const response = await fetch(`/api/assignments?userId=${encodeURIComponent(profile.email)}&id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
+        headers: { Authorization: `Bearer ${authData.session.access_token}` },
       });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Unable to delete assignment.');
+      showToast('Assignment deleted successfully.');
     } catch (e) {
-      console.error('Cloud deleteAssignment error:', e);
+      showToast(e instanceof Error ? e.message : 'Assignment delete failed.');
     }
   };
 
@@ -595,17 +606,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     try {
-      await fetch('/api/assignments', {
+      const { data: authData } = await supabase.auth.getSession();
+      if (!authData.session?.access_token) throw new Error('Please sign in again.');
+      const response = await fetch('/api/assignments', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.email,
-          id,
-          updated: { status: nextStatus },
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authData.session.access_token}` },
+        body: JSON.stringify({ userId: profile.email, id, updated: { status: nextStatus } }),
       });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Unable to update assignment status.');
+      showToast(`Assignment marked ${nextStatus.toLowerCase()}.`);
     } catch (e) {
-      console.error('Cloud toggleAssignmentStatus error:', e);
+      showToast(e instanceof Error ? e.message : 'Assignment status update failed.');
     }
   };
 
