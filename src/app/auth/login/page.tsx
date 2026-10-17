@@ -23,7 +23,7 @@ export default function LoginPage() {
     setError('');
     const ok = await login(email, password);
     if (!ok) {
-      setError('Sign-in failed. Check your email and password, and confirm your email if required.');
+      setError('Sign-in failed. Check your email and password. Teacher accounts must use the Teacher Login Portal.');
       return;
     }
 
