@@ -14,7 +14,6 @@ import {
   ShoppingBag,
   Bell,
   User,
-  GraduationCap,
   LogOut,
   Moon,
   Sun,
