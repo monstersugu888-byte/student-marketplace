@@ -33,10 +33,23 @@ export default function LoginPage() {
       setError('Could not verify your account. Please try again.');
       return;
     }
-    if (authData.user.app_metadata?.role === 'teacher') {
+    const appRole = authData.user.app_metadata?.role;
+    const userMetadata = authData.user.user_metadata || {};
+    const requestedRole = userMetadata.requested_role || userMetadata.role;
+    const isTeacherAccount =
+      appRole === 'teacher' ||
+      appRole === 'teacher_applicant' ||
+      requestedRole === 'teacher' ||
+      userMetadata.teacher_access_status === 'pending';
+
+    if (isTeacherAccount || appRole !== 'student') {
       const { supabase } = await import('@/lib/supabase/client');
       await supabase.auth.signOut({ scope: 'local' });
-      setError('This is a teacher account. Please use the Teacher Login Portal.');
+      setError(
+        isTeacherAccount
+          ? 'Teacher accounts cannot sign in here. Please use the Teacher Login Portal.'
+          : 'This account is not marked as a student account. Please contact the administrator.'
+      );
       return;
     }
     router.replace('/');
