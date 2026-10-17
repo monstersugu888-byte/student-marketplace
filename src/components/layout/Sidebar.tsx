@@ -7,6 +7,7 @@ import { useApp } from '@/context/AppContext';
 import {
   LayoutDashboard,
   BookOpenCheck,
+  GraduationCap,
   CalendarDays,
   UserCheck,
   FolderDown,
@@ -28,6 +29,7 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Assignments', href: '/assignments', icon: BookOpenCheck },
+    { name: 'Academic Portal', href: '/academics', icon: GraduationCap },
     { name: 'Timetable & Calendar', href: '/timetable', icon: CalendarDays },
     { name: 'Attendance Tracker', href: '/attendance', icon: UserCheck },
     { name: 'Study Materials', href: '/materials', icon: FolderDown },
