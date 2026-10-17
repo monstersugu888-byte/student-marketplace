@@ -365,7 +365,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       email,
       password: pass,
       options: {
-        data: { full_name: name, major: major || 'Computer Science' },
+        data: { role: 'student', full_name: name, major: major || 'Computer Science' },
         // Send confirmation emails to the deployed app, never the local development server.
         emailRedirectTo: new URL('/auth/callback', process.env.NEXT_PUBLIC_SITE_URL || 'https://studora-app.vercel.app').toString(),
       },
