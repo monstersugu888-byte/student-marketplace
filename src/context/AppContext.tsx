@@ -332,21 +332,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const login = async (email: string, pass: string, name?: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pass });
     if (error || !data.user) {
       showToast(error?.message || 'Sign-in failed. Please try again.');
       return false;
     }
 
-    // Use the user returned by signInWithPassword immediately. Avoid a second
-    // auth request and do not wait for background database sync to show the name.
+    // Enforce portal separation before marking the app as authenticated.
+    // Teacher applicants are also blocked from the student portal until approved.
     const user = data.user;
     const metadata = user.user_metadata || {};
+    const appRole = user.app_metadata?.role;
+    const requestedRole = metadata.requested_role || metadata.role;
+    const isTeacherAccount =
+      appRole === 'teacher' ||
+      appRole === 'teacher_applicant' ||
+      requestedRole === 'teacher' ||
+      metadata.teacher_access_status === 'pending' ||
+      metadata.teacher_access_status === 'approved';
+
+    if (isTeacherAccount || (appRole && appRole !== 'student')) {
+      await supabase.auth.signOut({ scope: 'local' });
+      setIsAuthenticated(false);
+      setUserRole('student');
+      showToast(isTeacherAccount
+        ? 'Teacher accounts cannot sign in on the student portal. Use the Teacher Login Portal.'
+        : 'This account is not authorized for the student portal.');
+      return false;
+    }
+
+    // Legacy accounts without role metadata remain usable as students unless
+    // they carry teacher-specific metadata above.
     const displayName = String(metadata.full_name || metadata.name || name || user.email?.split('@')[0] || 'Student');
     setIsAuthenticated(true);
-    setUserRole(user.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
+    setUserRole('student');
     setProfile(prev => ({
       ...prev,
+      id: user.id,
       email: user.email || email,
       name: displayName,
       major: String(metadata.major || prev.major),
