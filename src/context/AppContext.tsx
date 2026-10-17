@@ -178,11 +178,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsAuthenticated(Boolean(user));
       setUserRole(user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
       if (user) {
+        const metadata = user.user_metadata || {};
         setProfile(prev => ({
+          ...initialProfile,
           ...prev,
-          email: user.email || prev.email,
-          name: String(user.user_metadata?.full_name || user.email?.split('@')[0] || prev.name),
-          major: String(user.user_metadata?.major || prev.major),
+          id: user.id,
+          email: user.email || '',
+          name: String(metadata.full_name || metadata.name || user.email?.split('@')[0] || 'User'),
+          major: String(metadata.major || ''),
+          college: String(metadata.college || ''),
+          semester: String(metadata.semester || ''),
+          studentId: String(metadata.student_id || ''),
+          avatar: String(metadata.avatar || initialProfile.avatar),
+          bio: String(metadata.bio || ''),
         }));
       }
       const { data, error } = await supabase.from('marketplace_listings').select('*').order('created_at', { ascending: false });
@@ -210,8 +218,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     load();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(Boolean(session));
-      setUserRole(session?.user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
+      const user = session?.user;
+      setIsAuthenticated(Boolean(user));
+      setUserRole(user?.app_metadata?.role === 'teacher' ? 'teacher' : 'student');
+      if (user) {
+        const metadata = user.user_metadata || {};
+        setProfile(prev => ({
+          ...initialProfile,
+          ...prev,
+          id: user.id,
+          email: user.email || '',
+          name: String(metadata.full_name || metadata.name || user.email?.split('@')[0] || 'User'),
+          major: String(metadata.major || ''),
+          college: String(metadata.college || ''),
+          semester: String(metadata.semester || ''),
+          studentId: String(metadata.student_id || ''),
+          avatar: String(metadata.avatar || initialProfile.avatar),
+          bio: String(metadata.bio || ''),
+        }));
+      }
     });
     const savedTheme = localStorage.getItem('cm_theme') as 'light' | 'dark' | null;
     if (savedTheme) {
