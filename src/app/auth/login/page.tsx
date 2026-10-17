@@ -42,7 +42,7 @@ export default function LoginPage() {
       requestedRole === 'teacher' ||
       userMetadata.teacher_access_status === 'pending';
 
-    if (isTeacherAccount || appRole !== 'student') {
+    if (isTeacherAccount || (appRole && appRole !== 'student')) {
       const { supabase } = await import('@/lib/supabase/client');
       await supabase.auth.signOut({ scope: 'local' });
       setError(
