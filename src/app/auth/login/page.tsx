@@ -22,14 +22,27 @@ export default function LoginPage() {
     }
     setError('');
     const ok = await login(email, password);
-    if (ok) router.push('/');
-    else setError('Sign-in failed. Check your email and password, and confirm your email if required.');
+    if (!ok) {
+      setError('Sign-in failed. Check your email and password, and confirm your email if required.');
+      return;
+    }
+
+    // A valid teacher account must never be allowed through the student portal.
+    const { data: authData, error: authError } = await (await import('@/lib/supabase/client')).supabase.auth.getUser();
+    if (authError || !authData.user) {
+      setError('Could not verify your account. Please try again.');
+      return;
+    }
+    if (authData.user.app_metadata?.role === 'teacher') {
+      const { supabase } = await import('@/lib/supabase/client');
+      await supabase.auth.signOut({ scope: 'local' });
+      setError('This is a teacher account. Please use the Teacher Login Portal.');
+      return;
+    }
+    router.replace('/');
   };
 
-  const handleDemoLogin = () => {
-    login('alex.rivera@campus.edu', 'demo1234');
-    router.push('/');
-  };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-tr from-purple-900 via-slate-900 to-indigo-950 text-white">
