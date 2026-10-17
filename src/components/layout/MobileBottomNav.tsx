@@ -7,6 +7,7 @@ import { useApp } from '@/context/AppContext';
 import {
   LayoutDashboard,
   BookOpenCheck,
+  GraduationCap,
   CalendarDays,
   UserCheck,
   FolderDown,
@@ -20,6 +21,7 @@ export const MobileBottomNav: React.FC = () => {
   const navItems = [
     { name: 'Home', href: '/', icon: LayoutDashboard },
     { name: 'Tasks', href: '/assignments', icon: BookOpenCheck },
+    { name: 'Academics', href: '/academics', icon: GraduationCap },
     { name: 'Schedule', href: '/timetable', icon: CalendarDays },
     { name: 'Attendance', href: '/attendance', icon: UserCheck },
     { name: 'Materials', href: '/materials', icon: FolderDown },
