@@ -1,4 +1,8 @@
-# 🎓 CampusMate - Student Productivity & Marketplace Portal
+# 🎓 CampusMate — Student Productivity & Campus Portal
+
+**Created by [Muhammed Aseem](https://github.com/monstersugu888-byte)** · [Live Demo](https://studora-app.vercel.app) · [Source Code](https://github.com/monstersugu888-byte/student-marketplace)
+
+CampusMate is a student-focused web project for organizing assignments, attendance, study resources, schedules, and a campus marketplace. The live demo may change as development and deployment fixes are completed.
 
 **CampusMate** is an all-in-one student productivity and campus management web application built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, and **Google Cloud Firestore**.
 
