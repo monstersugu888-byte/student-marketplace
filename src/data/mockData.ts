@@ -11,22 +11,23 @@ import {
 } from '../types';
 
 export const initialProfile: StudentProfile = {
-  id: 'usr_001',
-  name: 'Alex Rivera',
-  email: 'alex.rivera@campus.edu',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-  college: 'School of Computer Science & Engineering',
-  major: 'Computer Science (B.Tech)',
-  semester: '5th Semester',
-  studentId: 'CS2023-8841',
-  gpa: '3.85 / 4.0',
-  bio: 'Passionate CS junior exploring distributed systems, UI design, and web dev. Coffee enthusiast ☕',
+  id: '',
+  name: '',
+  email: '',
+  avatar: '',
+  college: '',
+  major: '',
+  semester: '',
+  studentId: '',
+  gpa: '',
+  bio: '',
   notificationPreferences: {
     emailDeadlines: true,
     pushReminders: true,
     marketplaceAlerts: false,
     weeklyDigest: true,
   }
+
 };
 
 export const initialAttendances: SubjectAttendance[] = [
