@@ -1,6 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useApp } from '@/context/AppContext';
 import { WelcomeBanner } from '@/components/dashboard/WelcomeBanner';
 import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
 import { AttendanceWidget } from '@/components/dashboard/AttendanceWidget';
@@ -10,6 +12,15 @@ import { StudyMaterialsWidget } from '@/components/dashboard/StudyMaterialsWidge
 import { MarketplaceHighlights } from '@/components/dashboard/MarketplaceHighlights';
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { userRole, isAuthenticated } = useApp();
+
+  useEffect(() => {
+    if (isAuthenticated && userRole === 'teacher') router.replace('/teacher');
+  }, [isAuthenticated, userRole, router]);
+
+  if (isAuthenticated && userRole === 'teacher') return null;
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Welcome Hero Banner */}
