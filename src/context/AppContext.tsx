@@ -125,8 +125,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncUserFromCloud = useCallback(async (userEmail?: string, userName?: string) => {
     try {
       setIsCloudSyncing(true);
-      const activeEmail = userEmail || profile.email || 'alex.rivera@campus.edu';
-      const activeName = userName || profile.name || 'Alex Rivera';
+      const activeEmail = userEmail || profile.email || '';
+      const activeName = userName || profile.name || '';
 
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
